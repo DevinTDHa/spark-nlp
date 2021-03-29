@@ -21,19 +21,28 @@ unless ENV['ELASTICSEARCH_URL'].to_s.empty?
     next unless posts.include? post.basename
     posts.delete(post.basename)
 
-    m = !post.data['edition'].nil? && /(.*)\.(\d+)\z/.match(post.data['edition'])
-    edition_short = m.is_a?(MatchData) ? m[1] : ''
-
+    # body
     body = Nokogiri::HTML(post.content)
     body.search('h2, pre, table, .btn-box, .tabs-box, .highlight').remove
     body = body.text.gsub(/\s+/, ' ').strip
+    # task
+    task = post.data['task']
+    case task
+    when Array
+      task = task.select { |v| !v.start_with?('Pipeline') }
+    when String
+      task = nil if task.start_with?('Pipeline')
+    end
+    # edition
+    m = !post.data['edition'].nil? && /(.*)\.(\d+)\z/.match(post.data['edition'])
+    edition_short = m.is_a?(MatchData) ? m[1] : ''
 
     puts "Indexing #{post.url}..."
     client.index index: 'models', id: post.url, body: {
       name: post.data['name'],
       title: post.data['title'],
       tags_glued: post.data['tags'].join(' '),
-      task: post.data['task'],
+      task: task,
       language: post.data['language'],
       edition: post.data['edition'],
       edition_short: edition_short,

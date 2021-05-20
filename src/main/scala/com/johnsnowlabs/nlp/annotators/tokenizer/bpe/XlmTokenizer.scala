@@ -20,6 +20,9 @@ package com.johnsnowlabs.nlp.annotators.tokenizer.bpe
 import com.johnsnowlabs.nlp.annotators.common.{IndexedToken, Sentence, TokenPiece}
 import com.johnsnowlabs.nlp.annotators.tokenizer.moses.MosesTokenizer
 import com.johnsnowlabs.nlp.annotators.tokenizer.normalizer.MosesPunctNormalizer
+import com.johnsnowlabs.util.Benchmark
+
+import scala.collection.mutable.ListBuffer
 
 /**
   * XLM Tokenizer
@@ -65,31 +68,84 @@ private[nlp] class XlmTokenizer(
   val mosesTokenizer = new MosesTokenizer(lang)
 
   private def mosesPipeline(text: String): Array[String] = {
-    var processed = text
-    processed = mosesNormalizer.normalize(processed)
-    processed = mosesNormalizer.removeNonPrintingChar(processed)
-    mosesTokenizer.tokenize(processed)
+    var result: Array[String] = Array()
+    val benchmark = Benchmark.time2("") {
+
+      var processed = text
+      val bnormalize = Benchmark.time2("") {
+        processed = mosesNormalizer.normalize(processed)
+      }
+      XlmBenchmark.normalize.append(bnormalize)
+      //      val bremoveNonPrintingChar = Benchmark.time2("") {
+      processed = mosesNormalizer.removeNonPrintingChar(processed)
+      //      }
+      //      XlmBenchmark.removeNonPrintingChar.append(bremoveNonPrintingChar)
+
+      val btokenize = Benchmark.time2("") {
+        result = mosesTokenizer.tokenize(processed)
+      }
+      XlmBenchmark.tokenize.append(btokenize)
+    }
+    XlmBenchmark.mosesPipeline.append(benchmark)
+    result
   }
 
   override def tokenizeSubText(text: String, indexOffset: Int): Array[IndexedToken] = {
+    var indexedTokens: Array[IndexedToken] = Array()
     val mosesTokenized = mosesPipeline(text)
+    val benchmark = Benchmark.time2("") {
+      val processedText = if (doLowercaseAndRemoveAccent)
+        lowercaseAndRemoveAccent(mosesTokenized.mkString(" "))
+      else mosesTokenized.mkString(" ")
 
-    val processedText = if (doLowercaseAndRemoveAccent)
-      lowercaseAndRemoveAccent(mosesTokenized.mkString(" "))
-    else mosesTokenized.mkString(" ")
-
-    val textForIndexing = if (doLowercaseAndRemoveAccent) lowercaseAndRemoveAccent(text) else text
-    val indexedTokens = processedText.split(" ").map((token: String) => {
-      val tokenTextIndex = textForIndexing.indexOf(token)
-      IndexedToken(
-        token,
-        indexOffset + tokenTextIndex,
-        indexOffset + tokenTextIndex + token.length - 1
-      ) // TODO: What if special characters were removed?
-    })
+      val textForIndexing = if (doLowercaseAndRemoveAccent) lowercaseAndRemoveAccent(text) else text
+      indexedTokens = processedText.split(" ").map((token: String) => {
+        val tokenTextIndex = textForIndexing.indexOf(token)
+        IndexedToken(
+          token,
+          indexOffset + tokenTextIndex,
+          indexOffset + tokenTextIndex + token.length - 1
+        ) // TODO: What if special characters were removed?
+      })
+    }
+    XlmBenchmark.tokenizeSubText.append(benchmark)
     indexedTokens
   }
 
   override val appendForPieceId: Option[String] = Some("</w>")
 
+  override def bpe(indToken: IndexedToken,
+                  ): Array[TokenPiece] = {
+    val processedToken = preProcessTokenForBpe(indToken.token)
+
+    var word: Array[String] = Array[String]()
+    // split the word into characters, to be combined into subwords
+    word = processedToken.map(_.toString).toArray
+    val pairs: Array[(String, String)] = getBytePairs(word)
+
+    // XLM Specific: append word end indicator
+    if (pairs.isEmpty) {
+      word = Array(processedToken)
+    }
+    else {
+      pairs(pairs.length - 1) = pairs(pairs.length - 1) match {
+        case (s, s1) => (s, s1 + "</w>")
+      }
+      word(word.length - 1) += "</w>"
+      word = performMerges(word, pairs)
+
+      // remove end token again for correct indexes
+      word = word.map(_.replace("</w>", ""))
+    }
+
+    getTokenPieces(indToken, word, processedToken)
+  }
+}
+
+object XlmBenchmark {
+  val mosesPipeline: ListBuffer[Double] = ListBuffer()
+  val tokenizeSubText: ListBuffer[Double] = ListBuffer()
+  val normalize: ListBuffer[Double] = ListBuffer()
+  val tokenize: ListBuffer[Double] = ListBuffer()
+  val removeNonPrintingChar: ListBuffer[Double] = ListBuffer()
 }

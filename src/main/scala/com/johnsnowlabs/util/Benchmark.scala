@@ -2,9 +2,9 @@ package com.johnsnowlabs.util
 
 object Benchmark {
 
-  private var print = true
+  private var print = false
 
-  def setPrint(v: Boolean) = print = v
+  def setPrint(v: Boolean): Unit = print = v
   def getPrint: Boolean = print
 
   def time[R](description: String, forcePrint: Boolean = false)(block: => R): R = {
@@ -13,6 +13,15 @@ object Benchmark {
     val t1 = System.nanoTime()
     if (print || forcePrint) println(description + ": " + ((t1 - t0)/1000000000.0) + "sec")
     result
+  }
+
+  def time2[R](description: String, forcePrint: Boolean = false)(block: => R): Double = {
+    val t0 = System.nanoTime()
+    val result = block
+    val t1 = System.nanoTime()
+    val t = (t1 - t0)/1000000000.0
+    if (print || forcePrint) println(description + ": " + t + "sec")
+    t
   }
 
   def measure(iterations: Integer = 3, forcePrint: Boolean = false, description: String = "Took")(f: => Any): Double = {

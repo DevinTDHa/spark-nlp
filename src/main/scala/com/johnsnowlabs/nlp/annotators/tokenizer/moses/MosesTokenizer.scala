@@ -1,5 +1,9 @@
 package com.johnsnowlabs.nlp.annotators.tokenizer.moses
 
+import com.johnsnowlabs.util.Benchmark
+
+import scala.collection.mutable.ListBuffer
+
 /**
   * Scala Port of the Moses Tokenizer from [[https://github.com/alvations/sacremoses scaremoses]].
   */
@@ -117,33 +121,68 @@ private[johnsnowlabs] class MosesTokenizer(lang: String) {
       processed
     }
 
-    processed = applySubstitution(processed, DEDUPLICATE_SPACE, ASCII_JUNK)
-    processed = processed.trim()
+//    val bdeduplicateSpace = Benchmark.time2("DEDUPLICATE_SPACE, ASCII_JUNK") {
+      processed = applySubstitution(processed, DEDUPLICATE_SPACE, ASCII_JUNK)
+      processed = processed.trim()
+//    }
 
     //    if (protectedPatterns) ???
 
-    processed = applySubstitution(processed, PAD_NOT_ISALNUM)
+//    val bpadNotIsalnum = Benchmark.time2("PAD_NOT_ISALNUM") {
+      processed = applySubstitution(processed, PAD_NOT_ISALNUM)
+//    }
+//    MosesTokenizerBenchmark.padNotIsalnum.append(bpadNotIsalnum)
 
     //    if (aggressiveDashSplits) ???
 
-    processed = replaceMultidots(processed)
+//    val breplaceMultidots = Benchmark.time2("replaceMultidots") {
+      processed = replaceMultidots(processed)
+//    }
+//    MosesTokenizerBenchmark.replaceMultidots.append(breplaceMultidots)
 
-    processed = applySubstitution(processed, COMMA_SEPARATE_1, COMMA_SEPARATE_2, COMMA_SEPARATE_3)
+//    val bcommaSeparate = Benchmark.time2("COMMA_SEPARATE") {
+      processed = applySubstitution(processed, COMMA_SEPARATE_1, COMMA_SEPARATE_2, COMMA_SEPARATE_3)
+//    }
+//    MosesTokenizerBenchmark.commaSeparate.append(bcommaSeparate)
 
-    if (lang == "en") processed = applySubstitution(processed, ENGLISH_SPECIFIC_APOSTROPHE: _*)
-    else if (lang == "it" || lang == "fr") ??? // TODO
-    else processed = applySubstitution(processed, NON_SPECIFIC_APOSTROPHE)
+//    val benglishSpecificApostrophe = Benchmark.time2("ENGLISH_SPECIFIC_APOSTROPHE") {
+      if (lang == "en") processed = applySubstitution(processed, ENGLISH_SPECIFIC_APOSTROPHE: _*)
+      else if (lang == "it" || lang == "fr") ??? // TODO
+      else processed = applySubstitution(processed, NON_SPECIFIC_APOSTROPHE)
+//    }
 
-    processed = handlesNonBreakingPrefixes(processed)
+//    val bhandlesNonBreakingPrefixes = Benchmark.time2("handlesNonBreakingPrefixes") {
+      processed = handlesNonBreakingPrefixes(processed)
+//    }
+//    MosesTokenizerBenchmark.handlesNonBreakingPrefixes.append(bhandlesNonBreakingPrefixes)
 
-    processed = applySubstitution(processed, DEDUPLICATE_SPACE).trim()
+//    val bdeduplicateSpace2 = Benchmark.time2("DEDUPLICATE_SPACE") {
+      processed = applySubstitution(processed, DEDUPLICATE_SPACE).trim()
+//    }
+//    MosesTokenizerBenchmark.deduplicateSpace2.append(bdeduplicateSpace2)
 
-    processed = applySubstitution(processed, TRAILING_DOT_APOSTROPHE)
-
+//    val btrailingDotApostrophe = Benchmark.time2("TRAILING_DOT_APOSTROPHE") {
+      processed = applySubstitution(processed, TRAILING_DOT_APOSTROPHE)
+//    }
+//    MosesTokenizerBenchmark.trailingDotApostrophe.append(btrailingDotApostrophe)
     // Restore the protected tokens.
     // if (protectedPatterns) ???
-
-    processed = restoreMultidots(processed)
+//    val brestoreMultidots = Benchmark.time2("restoreMultidots") {
+      processed = restoreMultidots(processed)
+//    }
+//    MosesTokenizerBenchmark.restoreMultidots.append(brestoreMultidots)
     processed.split(" ")
   }
+}
+
+object MosesTokenizer {
+  val deduplicateSpace: ListBuffer[Double] = ListBuffer()
+  val padNotIsalnum: ListBuffer[Double] = ListBuffer()
+  val replaceMultidots: ListBuffer[Double] = ListBuffer()
+  val commaSeparate: ListBuffer[Double] = ListBuffer()
+  val englishSpecificApostrophe: ListBuffer[Double] = ListBuffer()
+  val handlesNonBreakingPrefixes: ListBuffer[Double] = ListBuffer()
+  val deduplicateSpace2: ListBuffer[Double] = ListBuffer()
+  val trailingDotApostrophe: ListBuffer[Double] = ListBuffer()
+  val restoreMultidots: ListBuffer[Double] = ListBuffer()
 }

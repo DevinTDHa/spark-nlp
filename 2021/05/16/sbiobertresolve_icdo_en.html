@@ -9,7 +9,7 @@
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-59JLR64');</script>
-<!-- End Google Tag Manager --><title>Sentence Entity Resolver for ICD-O (sbiobert_base_cased_mli embeddings)- Spark NLP Model</title><meta name="description" content="DescriptionThis model maps extracted medical entities to ICD-O codes using chunk embeddings, and has faster load time, with a speedup of about 6X when compar...">
+<!-- End Google Tag Manager --><title>Sentence Entity Resolver for ICD-O (sbiobert_base_cased_mli embeddings)- Spark NLP Model</title><meta name="description" content="DescriptionThis model maps extracted medical entities to ICD-O codes (Topography &amp; Morphology codes) using BioBert Sentence Embeddings.Given an oncologic...">
 <link rel="canonical" href="/2021/05/16/sbiobertresolve_icdo_en.html"><link rel="alternate" type="application/rss+xml" title="Spark NLP" href="/feed.xml"><!-- start favicons snippet, use https://realfavicongenerator.net/ -->
 <!---->
 <!-- <link rel="apple-touch-icon" sizes="180x180" href="/fav.ico"> -->
@@ -390,7 +390,7 @@
 " href="/">Spark NLP</a> -->
           <!---->
         </div></div><nav class="navigation top_navigation">
-        <ul class="top-menu"><li class="navigation__item "><a href="/">Home</a></li><li class="navigation__item "><a href="/docs/en/quickstart">Docs</a></li><li class="navigation__item "><a href="/learn">Learn</a></li><li class="navigation__item "><a href="/models">Models</a></li><li class="navigation__item "><a href="/classify_documents">Demo</a></li><li class="navigation__item "><a href="https://github.com/JohnSnowLabs/spark-nlp"><span style="color: #FF8A00;"><i class="fab fa-github fa-2x"></i></span></a></li><li class="navigation__item "><a href="https://www.johnsnowlabs.com/slack-redirect/"><span style="color: #FF8A00;"><i class="fab fa-slack-hash fa-2x"></i></span></a></li></ul>
+        <ul class="top-menu"><li class="navigation__item "><a href="/">Home</a></li><li class="navigation__item "><a href="/docs/en/quickstart">Docs</a></li><li class="navigation__item "><a href="/learn">Learn</a></li><li class="navigation__item "><a href="/models">Models</a></li><li class="navigation__item "><a href="/demos">Demo</a></li><li class="navigation__item "><a href="https://github.com/JohnSnowLabs/spark-nlp"><span style="color: #FF8A00;"><i class="fab fa-github fa-2x"></i></span></a></li><li class="navigation__item "><a href="https://www.johnsnowlabs.com/slack-redirect/"><span style="color: #FF8A00;"><i class="fab fa-slack-hash fa-2x"></i></span></a></li></ul>
       </nav><a class="responsive_btn" href="#" id="aside_menu">          
         <i class="fas fa-bars"></i>
         <i class="fas fa-times"></i>
@@ -409,7 +409,9 @@
 
 <!-- end custom article top snippet --><div class="article__content" itemprop="articleBody"><h2 id="description">Description</h2>
 
-<p>This model maps extracted medical entities to ICD-O codes using chunk embeddings, and has faster load time, with a speedup of about 6X when compared to previous versions. Also the load process now is more memory friendly meaning that the maximum memory required during load time is smaller, reducing the chances of OOM exceptions, and thus relaxing hardware requirements.</p>
+<p>This model maps extracted medical entities to ICD-O codes (Topography &amp; Morphology codes) using BioBert Sentence Embeddings.</p>
+
+<p>Given an oncological entity found in the text (via NER models like ner_jsl), it returns top terms and resolutions along with the corresponding ICD-O codes to present more granularity with respect to body parts mentioned. It also returns the original <code class="language-plaintext highlighter-rouge">Topography</code> codes, <code class="language-plaintext highlighter-rouge">Morphology</code> codes comprising of <code class="language-plaintext highlighter-rouge">Histology</code> and <code class="language-plaintext highlighter-rouge">Behavior</code> codes, and descriptions in the aux metadata.</p>
 
 <h2 id="predicted-entities">Predicted Entities</h2>
 

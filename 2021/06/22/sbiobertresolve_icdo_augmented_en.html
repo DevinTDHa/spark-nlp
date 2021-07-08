@@ -390,7 +390,7 @@
 " href="/">Spark NLP</a> -->
           <!---->
         </div></div><nav class="navigation top_navigation">
-        <ul class="top-menu"><li class="navigation__item "><a href="/">Home</a></li><li class="navigation__item "><a href="/docs/en/quickstart">Docs</a></li><li class="navigation__item "><a href="/learn">Learn</a></li><li class="navigation__item "><a href="/models">Models</a></li><li class="navigation__item "><a href="/classify_documents">Demo</a></li><li class="navigation__item "><a href="https://github.com/JohnSnowLabs/spark-nlp"><span style="color: #FF8A00;"><i class="fab fa-github fa-2x"></i></span></a></li><li class="navigation__item "><a href="https://www.johnsnowlabs.com/slack-redirect/"><span style="color: #FF8A00;"><i class="fab fa-slack-hash fa-2x"></i></span></a></li></ul>
+        <ul class="top-menu"><li class="navigation__item "><a href="/">Home</a></li><li class="navigation__item "><a href="/docs/en/quickstart">Docs</a></li><li class="navigation__item "><a href="/learn">Learn</a></li><li class="navigation__item "><a href="/models">Models</a></li><li class="navigation__item "><a href="/demos">Demo</a></li><li class="navigation__item "><a href="https://github.com/JohnSnowLabs/spark-nlp"><span style="color: #FF8A00;"><i class="fab fa-github fa-2x"></i></span></a></li><li class="navigation__item "><a href="https://www.johnsnowlabs.com/slack-redirect/"><span style="color: #FF8A00;"><i class="fab fa-slack-hash fa-2x"></i></span></a></li></ul>
       </nav><a class="responsive_btn" href="#" id="aside_menu">          
         <i class="fas fa-bars"></i>
         <i class="fas fa-times"></i>
@@ -411,7 +411,7 @@
 
 <p>This model maps extracted medical entities to ICD-O codes using sBioBert sentence embeddings. This model is augmented using the site information coming from ICD10 and synonyms coming from SNOMED vocabularies. It is trained with a dataset that is 20x larger than the previous version of ICDO resolver.</p>
 
-<p>Given the oncological entity found in the text (via NER models like ner_jsl), it returns top terms and resolutions along with the corresponding ICD-10 codes to present more granularity with respect to body parts mentioned. It also returns the original histological behavioral codes and descriptions in the aux metadata.</p>
+<p>Given an oncological entity found in the text (via NER models like ner_jsl), it returns top terms and resolutions along with the corresponding ICD-O codes to present more granularity with respect to body parts mentioned. It also returns the original <code class="language-plaintext highlighter-rouge">Topography</code> codes, <code class="language-plaintext highlighter-rouge">Morphology</code> codes comprising of <code class="language-plaintext highlighter-rouge">Histology</code> and <code class="language-plaintext highlighter-rouge">Behavior</code> codes, and descriptions.</p>
 
 <h2 id="predicted-entities">Predicted Entities</h2>
 

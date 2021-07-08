@@ -1,2 +1,2 @@
-scripts/colab_setup.sh
-scripts/colab_setup.sh
+docs/en/transformers.md
+docs/en/transformers.md

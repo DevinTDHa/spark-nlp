@@ -9,9 +9,8 @@
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-59JLR64');</script>
-<!-- End Google Tag Manager --><title>Spark NLP in Action - Spark NLP</title><meta name="description" content="High Performance NLP with Apache Spark
-">
-<link rel="canonical" href="/extract_tables_structured_data"><link rel="alternate" type="application/rss+xml" title="Spark NLP" href="/feed.xml"><!-- start favicons snippet, use https://realfavicongenerator.net/ -->
+<!-- End Google Tag Manager --><title>Named Entity Recognition - CoNLL03 RoBERTa (ner_conll_roberta_large)- Spark NLP Model</title><meta name="description" content="Descriptionner_conll_roberta_large is a Named Entity Recognition (or NER) model, meaning it annotates text to find features like the names of people, places,...">
+<link rel="canonical" href="/2021/08/04/ner_conll_roberta_large_en.html"><link rel="alternate" type="application/rss+xml" title="Spark NLP" href="/feed.xml"><!-- start favicons snippet, use https://realfavicongenerator.net/ -->
 <!---->
 <!-- <link rel="apple-touch-icon" sizes="180x180" href="/fav.ico"> -->
 
@@ -276,7 +275,7 @@
 </script></head>
   <body>
     <div class="root" data-is-touch="false">
-      <div class="layout--page js-page-root"><div class="page__main js-page-main page__viewport full-width cell cell--auto">
+      <div class="layout--page js-page-root"><div class="page__main js-page-main page__viewport cell cell--auto">
 
       <div class="page__main-inner"><div class="page__header d-print-none"><!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-59JLR64"
@@ -398,128 +397,358 @@
         </a>
     </div>
   </header>
-</div><div class="page__content  demopage_content"><div class="demopage-sidemenu">
-    <ul class="sidemenu">
-      <li class="free_link"><strong>Spark NLP: English</strong><span>Free</span></li>
-      <li      >
-        <a href="/infer_meaning_intent">Infer Meaning &amp; Intent</a>
-      </li>
-      <li      >
-        <a href="/classify_documents">Classify Documents</a>
-      </li>
-      <li      >
-        <a href="/recognize_entitie">Recognize Entities</a>
-      </li>
-      <li      >
-        <a href="/detect_sentiment_emotion">Detect Sentiment &amp; Emotion</a>
-      </li>
-      <li      >
-        <a href="/analyze_spelling_grammar">Analyze Spelling &amp; Grammar</a>
-      </li>
-      <li class="free_link"><strong>Spark NLP: World Languages</strong><span>Free</span></li>
-      <li      >
-        <a href="/identify_translate_languages">Identify &amp; Translate Languages</a>
-      </li>
-      <li      >
-        <a href="/european_languages">European Languages</a>
-      </li>
-      <li      >
-        <a href="/east_asian_languages">East Asian Languages</a>
-      </li>
-      <li      >
-        <a href="/languages_india">Languages of India</a>
-      </li>
-      <li      >
-        <a href="/middle_eastern_languages">Middle Eastern Languages</a>
-      </li>
-      <li      >
-        <a href="/languages_africa">African Languages</a>
-      </li>
-      <li><strong>Spark NLP for Healthcare</strong></li>
-      <li      >
-        <a href="/recognize_clinical_entities">Recognize Clinical Entities</a>
-      </li>
-      <li      >
-        <a href="/recognize_biomedical_entities">Recognize Biomedical Entities</a>
-      </li>
-      <li      >
-        <a href="/deidentification">De-Identification</a>
-      </li>
-      <li      >
-        <a href="/resolve_entities_codes">Resolve Entities to Codes</a>
-      </li>
-      <li      >
-        <a href="/recognize_social_determinants">Recognize Social Determinants</a>
-      </li>
-      <li      >
-        <a href="/extract_relationships">Extract Relationships</a>
-      </li>
-      <li      >
-        <a href="/split_clean_medical_text">Split &amp; Clean Medical Text</a>
-      </li>
-      <li      >
-        <a href="/analyze_non_english_medical_text">Analyze non-English Medical Text</a>
-      </li>
-      <li><strong>Spark OCR</strong></li>
-      <li      >
-        <a href="/extract_text_from_documents">Extract Text from Documents</a>
-      </li>
-      <li      >
-        <a href="/enhance_low_quality_images">Enhance Low-Quality Images</a>
-      </li>
-      <li    class="active"     >
-        <a href="/extract_tables_structured_data">Extract Tables &amp; Structured Data</a>
-      </li>
-      <li      >
-        <a href="/analyze_non_english_text_documents">Analyze Non-English Text &amp; Documents</a>
-      </li>
-    </ul>
-  </div><div class="grid grid--reverse">
+</div><div class="page__content "><div class ="main"><div class="grid grid--reverse">
 
               <div class="col-aside d-print-none js-col-aside"></div>
 
               <div class="col-main cell cell--auto"><!-- start custom main top snippet -->
 
-<!-- end custom main top snippet --><article itemscope itemtype="http://schema.org/WebPage"><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script><div class="article__header"><header><h1>Spark NLP in Action</h1></header></div><meta itemprop="headline" content="Spark NLP in Action"><meta itemprop="author" content=""/><div class="js-article-content"><!-- Do not use auto intent in this file. -->
-<div class="layout--landing"><div class="demopage"><section class="hero section-row hero--center" id="hero-1">
+<!-- end custom main top snippet --><article><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script><div class="article__header"><div class="header-author"><div class="article__info clearfix"><ul class="right-col menu"><li><i class="far fa-user"></i> <span>John Snow Labs</span></li><li><i class="far fa-calendar-alt"></i> <span>Aug 04, 2021</span>
+            </li></ul></div><meta itemprop="author" content=""/><meta itemprop="datePublished" content="2021-08-04T00:00:00+00:00"></div><header><h1>Named Entity Recognition - CoNLL03 RoBERTa (ner_conll_roberta_large)</h1></header></div><meta itemprop="headline" content="Named Entity Recognition - CoNLL03 RoBERTa (ner_conll_roberta_large)"><div class="article__info tags_box clearfix"><ul class="left-col menu"><li>ner</li><li>en</li><li>english</li><li>roberta</li><li>open_source</li><li>conll</li></ul></div><meta itemprop="author" content=""/><meta itemprop="datePublished" content="2021-08-04T00:00:00+00:00">
+    <meta itemprop="keywords" content="ner,en,english,roberta,open_source,conll"><div class="js-article-content"><div class="model-wrap"><div class="layout--article"><!-- start custom article top snippet -->
 
-      <div class="">
-        
-<div class="subtitle">Spark OCR <img src="/assets/images/arrow.svg" /><strong>Extract Tables & Structured Data</strong></div><div class="grid--container main-big" id="panels"><div class="tab-wrapper-inner"><div class="tab-item ">
-              <div class="tab-item-inner"><figure class="tab_fig_blue">
-                    <img src="/assets/images/Recognize_text_in_natural_scenes.svg" />
-                  </figure>
-                  <figure class="tab_fig_white">
-                    <img src="/assets/images/Recognize_text_in_natural_scenes_f.svg" />
-                  </figure><div class="tab-item-title">Recognize entities in scanned PDFs</div><div class="tab-description">End-to-end example of regular NER pipeline: import scanned images from cloud storage, preprocess them for improving their quality, recognize text using Spark OCR, correct the spelling mistakes for improving OCR results and finally run NER for extracting entities.</div><ul class="tab-menu"><li><a id="recognize_entities_in_scanned_pdfs" class="button button--normal button--pill button--lg"
-                      href="https://demo.johnsnowlabs.com/ocr/PDF_TEXT_NER/">Live Demo</a></li><li><a id="recognize_entities_in_scanned_pdfs" class="button button--blue_btn button--pill button--lg"
-                      href="https://colab.research.google.com/github/JohnSnowLabs/spark-nlp-workshop/blob/master/tutorials/streamlit_notebooks/ocr/PDF_TEXT_NER.ipynb">Colab Netbook</a></li></ul></div> 
-            </div><div class="tab-item ">
-              <div class="tab-item-inner"><figure class="tab_fig_blue">
-                    <img src="/assets/images/Extract_tables_from_PDFs.svg" />
-                  </figure>
-                  <figure class="tab_fig_white">
-                    <img src="/assets/images/Extract_tables_from_PDFs_f.svg" />
-                  </figure><div class="tab-item-title">Extract tables</div><div class="tab-description">Extract tables from selectable PDF documents with the new features offered by Spark OCR.</div><ul class="tab-menu"><li><a id="extract_tables_from_pdfs" class="button button--normal button--pill button--lg"
-                      href="https://demo.johnsnowlabs.com/ocr/PDF_TEXT_TABLE/">Live Demo</a></li><li><a id="extract_tables_from_pdfs" class="button button--blue_btn button--pill button--lg"
-                      href="https://colab.research.google.com/github/JohnSnowLabs/spark-nlp-workshop/blob/master/tutorials/streamlit_notebooks/ocr/PDF_TEXT_TABLE.ipynb">Colab Netbook</a></li></ul></div> 
-            </div><div class="tab-item ">
-              <div class="tab-item-inner"><figure class="tab_fig_blue">
-                    <img src="/assets/images/correct.svg" />
-                  </figure>
-                  <figure class="tab_fig_white">
-                    <img src="/assets/images/correct_f.svg" />
-                  </figure><div class="tab-item-title">Extract Data from FoundationOne Sequencing Reports</div><div class="tab-description">Use our transformer to parse patient info, genomic and biomarker findings, and gene lists.</div><ul class="tab-menu"><li><a id="extract-data-from-foundationone-sequencing-reports" class="button button--normal button--pill button--lg"
-                      href="https://demo.johnsnowlabs.com/ocr/FOUNDATIONONE_REPORT_PARSING/">Live Demo</a></li><li><a id="extract-data-from-foundationone-sequencing-reports" class="button button--blue_btn button--pill button--lg"
-                      href="/">Colab Netbook</a></li></ul></div> 
-            </div></div></div></div> </section></div>
+<!-- end custom article top snippet --><div class="article__content" itemprop="articleBody"><h2 id="description">Description</h2>
+
+<p><code class="language-plaintext highlighter-rouge">ner_conll_roberta_large</code> is a Named Entity Recognition (or NER) model, meaning it annotates text to find features like the names of people, places, and organizations. It was trained on the CoNLL 2003 text corpus. This NER model does not read words directly but instead reads word embeddings, which represent words as points such that more semantically similar words are closer together.<code class="language-plaintext highlighter-rouge">ner_conll_roberta_large</code> model is trained with<code class="language-plaintext highlighter-rouge">roberta_large</code> word embeddings, so be sure to use the same embeddings in the pipeline.</p>
+
+<h2 id="predicted-entities">Predicted Entities</h2>
+
+<p><code class="language-plaintext highlighter-rouge">PER</code>, <code class="language-plaintext highlighter-rouge">LOC</code>, <code class="language-plaintext highlighter-rouge">ORG</code>, <code class="language-plaintext highlighter-rouge">MISC</code></p>
+
+<p class="btn-box"><a href="https://demo.johnsnowlabs.com/public/NER_EN" class="button button-orange">Live Demo</a>
+<a href="https://colab.research.google.com/github/JohnSnowLabs/spark-nlp-workshop/blob/master/tutorials/streamlit_notebooks/NER_EN.ipynb" class="button button-orange button-orange-trans co button-icon">Open in Colab</a>
+<a href="https://s3.amazonaws.com/auxdata.johnsnowlabs.com/public/models/ner_conll_roberta_large_en_3.2.0_2.4_1628080747001.zip" class="button button-orange button-orange-trans arr button-icon">Download</a></p>
+
+<h2 id="how-to-use">How to use</h2>
+
+<div class="tabs-box">
+  <div class="top_tab_li">   
+    <button class="tab-li code-selector-active python-button">Python</button><button class="tab-li code-selector-un-active scala-button">Scala</button><button class="tab-li code-selector-un-active nlu-button">NLU</button>
+</div>
+  <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">document_assembler</span> <span class="o">=</span> <span class="n">DocumentAssembler</span><span class="p">()</span> \
+    <span class="p">.</span><span class="n">setInputCol</span><span class="p">(</span><span class="s">'text'</span><span class="p">)</span> \
+    <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">'document'</span><span class="p">)</span>
+
+<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">Tokenizer</span><span class="p">()</span> \
+    <span class="p">.</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">'document'</span><span class="p">])</span> \
+    <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">'token'</span><span class="p">)</span>
+
+<span class="n">embeddings</span> <span class="o">=</span> <span class="n">RoBertaEmbeddings</span>\
+      <span class="p">.</span><span class="n">pretrained</span><span class="p">(</span><span class="s">'roberta_large'</span><span class="p">,</span> <span class="s">'en'</span><span class="p">)</span>\
+      <span class="p">.</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">"token"</span><span class="p">,</span> <span class="s">"document"</span><span class="p">])</span>\
+      <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">"embeddings"</span><span class="p">)</span>
+
+<span class="n">ner_model</span> <span class="o">=</span> <span class="n">NerDLModel</span><span class="p">.</span><span class="n">pretrained</span><span class="p">(</span><span class="s">'ner_conll_roberta_large'</span><span class="p">,</span> <span class="s">'en'</span><span class="p">)</span> \
+    <span class="p">.</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">'document'</span><span class="p">,</span> <span class="s">'token'</span><span class="p">,</span> <span class="s">'embeddings'</span><span class="p">])</span> \
+    <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">'ner'</span><span class="p">)</span>
+
+<span class="n">ner_converter</span> <span class="o">=</span> <span class="n">NerConverter</span><span class="p">()</span> \
+    <span class="p">.</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">'document'</span><span class="p">,</span> <span class="s">'token'</span><span class="p">,</span> <span class="s">'ner'</span><span class="p">])</span> \
+    <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">'entities'</span><span class="p">)</span>
+
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="n">stages</span><span class="o">=</span><span class="p">[</span>
+    <span class="n">document_assembler</span><span class="p">,</span> 
+    <span class="n">tokenizer</span><span class="p">,</span>
+    <span class="n">embeddings</span><span class="p">,</span>
+    <span class="n">ner_model</span><span class="p">,</span>
+    <span class="n">ner_converter</span>
+<span class="p">])</span>
+
+<span class="n">example</span> <span class="o">=</span> <span class="n">spark</span><span class="p">.</span><span class="n">createDataFrame</span><span class="p">([[</span><span class="s">'My name is John!'</span><span class="p">]]).</span><span class="n">toDF</span><span class="p">(</span><span class="s">"text"</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="p">.</span><span class="n">fit</span><span class="p">(</span><span class="n">example</span><span class="p">).</span><span class="n">transform</span><span class="p">(</span><span class="n">example</span><span class="p">)</span>
+</code></pre></div>  </div>
+  <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">document_assembler</span> <span class="k">=</span> <span class="nc">DocumentAssembler</span><span class="o">()</span> 
+    <span class="o">.</span><span class="py">setInputCol</span><span class="o">(</span><span class="s">"text"</span><span class="o">)</span> 
+    <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"document"</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="nv">tokenizer</span> <span class="k">=</span> <span class="nc">Tokenizer</span><span class="o">()</span> 
+    <span class="o">.</span><span class="py">setInputCols</span><span class="o">(</span><span class="s">"document"</span><span class="o">)</span> 
+    <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"token"</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="nv">embeddings</span> <span class="k">=</span> <span class="nv">RoBertaEmbeddings</span><span class="o">.</span><span class="py">pretrained</span><span class="o">(</span><span class="s">"roberta_large"</span><span class="o">,</span> <span class="s">"en"</span><span class="o">)</span>
+    <span class="o">.</span><span class="py">setInputCols</span><span class="o">(</span><span class="s">"document"</span><span class="o">,</span> <span class="s">"token"</span><span class="o">)</span> 
+    <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"embeddings"</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="nv">ner_model</span> <span class="k">=</span> <span class="nv">NerDLModel</span><span class="o">.</span><span class="py">pretrained</span><span class="o">(</span><span class="s">"ner_conll_roberta_large"</span><span class="o">,</span> <span class="s">"en"</span><span class="o">)</span> 
+    <span class="o">.</span><span class="py">setInputCols</span><span class="o">(</span><span class="s">"document"</span><span class="o">',</span> <span class="s">"token"</span><span class="o">,</span> <span class="s">"embeddings"</span><span class="o">)</span> 
+    <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"ner"</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="nv">ner_converter</span> <span class="k">=</span> <span class="nc">NerConverter</span><span class="o">()</span> 
+    <span class="o">.</span><span class="py">setInputCols</span><span class="o">(</span><span class="s">"document"</span><span class="o">,</span> <span class="s">"token"</span><span class="o">,</span> <span class="s">"ner"</span><span class="o">)</span> 
+    <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"entities"</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="nv">pipeline</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Pipeline</span><span class="o">().</span><span class="py">setStages</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="n">document_assembler</span><span class="o">,</span> <span class="n">tokenizer</span><span class="o">,</span> <span class="n">embeddings</span><span class="o">,</span> <span class="n">ner_model</span><span class="o">,</span> <span class="n">ner_converter</span><span class="o">))</span>
+
+<span class="k">val</span> <span class="nv">example</span> <span class="k">=</span> <span class="nv">Seq</span><span class="o">.</span><span class="py">empty</span><span class="o">[</span><span class="err">"</span><span class="kt">My</span> <span class="kt">name</span> <span class="kt">is</span> <span class="kt">John!</span><span class="err">"</span><span class="o">].</span><span class="py">toDS</span><span class="o">.</span><span class="py">toDF</span><span class="o">(</span><span class="s">"text"</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="nv">pipeline</span><span class="o">.</span><span class="py">fit</span><span class="o">(</span><span class="n">example</span><span class="o">).</span><span class="py">transform</span><span class="o">(</span><span class="n">example</span><span class="o">)</span>
+</code></pre></div>  </div>
+
+  <div class="language-python nlu-block highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">nlu</span>
+
+<span class="n">text</span> <span class="o">=</span> <span class="p">[</span><span class="s">"My name is John!"</span><span class="p">]</span>
+
+<span class="n">ner_df</span> <span class="o">=</span> <span class="n">nlu</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="s">'en.ner.ner_conll_roberta_large'</span><span class="p">).</span><span class="n">predict</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">output_level</span><span class="o">=</span><span class="s">'token'</span><span class="p">)</span>
+</code></pre></div>  </div>
 </div>
 
+<h2 class="model-param" id="model-information">Model Information</h2>
 
+<table class="table-model">
+  <tbody>
+    <tr>
+      <td>Model Name:</td>
+      <td>ner_conll_roberta_large</td>
+    </tr>
+    <tr>
+      <td>Type:</td>
+      <td>ner</td>
+    </tr>
+    <tr>
+      <td>Compatibility:</td>
+      <td>Spark NLP 3.2.0+</td>
+    </tr>
+    <tr>
+      <td>License:</td>
+      <td>Open Source</td>
+    </tr>
+    <tr>
+      <td>Edition:</td>
+      <td>Official</td>
+    </tr>
+    <tr>
+      <td>Input Labels:</td>
+      <td>[sentence, token, embeddings]</td>
+    </tr>
+    <tr>
+      <td>Output Labels:</td>
+      <td>[ner]</td>
+    </tr>
+    <tr>
+      <td>Language:</td>
+      <td>en</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="data-source">Data Source</h2>
+
+<p><a href="https://www.clips.uantwerpen.be/conll2003/ner/">https://www.clips.uantwerpen.be/conll2003/ner/</a></p>
+
+<h2 id="benchmarking">Benchmarking</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Test:
+
+       precision    recall  f1-score   support
+
+       B-LOC       0.93      0.92      0.92      1668
+       I-ORG       0.87      0.91      0.89       835
+      I-MISC       0.57      0.77      0.66       216
+       I-LOC       0.89      0.86      0.88       257
+       I-PER       0.97      0.98      0.98      1156
+      B-MISC       0.76      0.85      0.80       702
+       B-ORG       0.89      0.90      0.90      1661
+       B-PER       0.96      0.95      0.95      1617
+
+   micro avg       0.90      0.92      0.91      8112
+   macro avg       0.86      0.89      0.87      8112
+weighted avg       0.90      0.92      0.91      8112
+
+processed 46435 tokens with 5648 phrases<span class="p">;</span> found: 5719 phrases<span class="p">;</span> correct: 5109.
+accuracy:  91.80%<span class="p">;</span> <span class="o">(</span>non-O<span class="o">)</span>
+accuracy:  97.87%<span class="p">;</span> precision:  89.33%<span class="p">;</span> recall:  90.46%<span class="p">;</span> FB1:  89.89
+              LOC: precision:  92.41%<span class="p">;</span> recall:  91.19%<span class="p">;</span> FB1:  91.79  1646
+             MISC: precision:  73.83%<span class="p">;</span> recall:  83.19%<span class="p">;</span> FB1:  78.23  791
+              ORG: precision:  87.43%<span class="p">;</span> recall:  88.74%<span class="p">;</span> FB1:  88.08  1686
+              PER: precision:  95.86%<span class="p">;</span> recall:  94.62%<span class="p">;</span> FB1:  95.24  1596
+
+
+Dev:
+
+              precision    recall  f1-score   support
+
+       B-LOC       0.97      0.96      0.96      1837
+       I-ORG       0.95      0.92      0.93       751
+      I-MISC       0.87      0.89      0.88       346
+       I-LOC       0.94      0.93      0.94       257
+       I-PER       0.98      0.98      0.98      1307
+      B-MISC       0.87      0.93      0.90       922
+       B-ORG       0.94      0.94      0.94      1341
+       B-PER       0.97      0.98      0.97      1842
+
+   micro avg       0.95      0.95      0.95      8603
+   macro avg       0.94      0.94      0.94      8603
+weighted avg       0.95      0.95      0.95      8603
+
+processed 51362 tokens with 5942 phrases<span class="p">;</span> found: 5996 phrases<span class="p">;</span> correct: 5633.
+accuracy:  95.18%<span class="p">;</span> <span class="o">(</span>non-O<span class="o">)</span>
+accuracy:  98.95%<span class="p">;</span> precision:  93.95%<span class="p">;</span> recall:  94.80%<span class="p">;</span> FB1:  94.37
+              LOC: precision:  96.75%<span class="p">;</span> recall:  95.65%<span class="p">;</span> FB1:  96.19  1816
+             MISC: precision:  85.61%<span class="p">;</span> recall:  91.65%<span class="p">;</span> FB1:  88.53  987
+              ORG: precision:  92.14%<span class="p">;</span> recall:  92.62%<span class="p">;</span> FB1:  92.38  1348
+              PER: precision:  96.96%<span class="p">;</span> recall:  97.12%<span class="p">;</span> FB1:  97.04  1845
+
+
+</code></pre></div></div>
+</div><div class="d-print-none"><footer class="article__footer"><meta itemprop="dateModified" content="2021-08-04T00:00:00+00:00"><!-- start custom article footer snippet -->
+
+<!-- end custom article footer snippet --></footer>
+
+<script>
+
+
+jQuery(document).ready(function(){  
+    $( ".scala-button" ).click(function() {
+        $(this).closest( ".tabs-box" ).find(".scala-button").removeClass('code-selector-un-active').addClass( "code-selector-active" );        
+
+        //remove  active class from all other buttons
+        $(this).closest( ".tabs-box" ).find(".nlu-button").removeClass('code-selector-active').addClass('code-selector-un-active');
+        $(this).closest( ".tabs-box" ).find(".python-button").removeClass('code-selector-active').addClass('code-selector-un-active');
+
+        //toggle language snippets
+        $(this).closest( ".tabs-box" ).find( ".language-scala" ).show();
+        $(this).closest( ".tabs-box" ).find( ".language-python, .nlu-block" ).hide();
+    });
+
+    $( ".python-button" ).click(function() {
+        //set current button to active class and remove unactive class
+        $(this).closest( ".tabs-box" ).find(".python-button").removeClass('code-selector-un-active').addClass( "code-selector-active" ); 
+
+        //remove  active class from all other buttons
+        $(this).closest( ".tabs-box" ).find(".nlu-button").removeClass('code-selector-active').addClass('code-selector-un-active');
+        $(this).closest( ".tabs-box" ).find(".scala-button").removeClass('code-selector-active').addClass('code-selector-un-active');
+
+
+        //toggle language snippets
+        $(this).closest( ".tabs-box" ).find( ".language-python" ).show();
+        $(this).closest( ".tabs-box" ).find( ".nlu-block, .language-scala" ).hide();
+    });
+
+    $( ".nlu-button" ).click(function() {
+        //set current button to active class and remove unactive class
+        $(this).closest( ".tabs-box" ).find(".nlu-button").removeClass('code-selector-un-active').addClass( "code-selector-active" );        
+
+        //remove  active class from all other buttons
+        $(this).closest( ".tabs-box" ).find(".scala-button").removeClass('code-selector-active').addClass('code-selector-un-active');
+        $(this).closest( ".tabs-box" ).find(".python-button").removeClass('code-selector-active').addClass('code-selector-un-active');
+
+        //toggle language snippets        
+        $(this).closest( ".tabs-box" ).find( ".language-python, .language-scala" ).hide();
+        $(this).closest( ".tabs-box" ).find( ".nlu-block" ).show();
+    });
+});
+
+function togglePython1() {
+
+    //set current button to active class and remove unactive class
+    $( ".python-button" ).addClass( "code-selector-active" );
+
+
+    //toggle language snippets
+    $( ".tabs-box .language-python" ).show() 
+    $( ".tabs-box .nlu-block" ).hide()
+    $( ".tabs-box .language-scala" ).hide()
+}
+
+function defer(method) { //wait until jquery ready
+    if (window.jQuery) {
+        method();
+    } else {
+        setTimeout(function() { defer(method) }, 15);
+    }
+}
+
+defer(function () { // load inital language
+    togglePython1()
+});
+
+
+
+
+</script>
+
+
+<style>
+  /* Remove Scrollbar from Code Segments */
+.article__content .highlighter-rouge > .highlight > pre > code, .article__content figure.highlight > pre > code  {
+    overflow: auto;
+}
+
+
+
+button.code-selector-active {
+ background-color: white;
+ color: #08c;
+ font-weight: bold;
+ border-width: 1px;
+ padding-left: 12px;
+ padding-right: 12px;
+ width: 90px;
+ padding-top: 6px;
+ margin-right: 2px;
+
+ border-bottom: none;
+
+ position: relative;
+ z-index: 2;
+}
+
+button.code-selector-un-active {
+    background-color: white;
+    padding-left: 12px;
+    padding-right: 12px;
+    width: 90px;
+    margin-right: 2px;
+    padding-top: 8px;
+    position: relative;
+    border-bottom: none;
+
+   }
+
+hr.code-selector-underlie {
+    border-top: 1px solid;
+    background-color: black;
+    width: fill;
+    height: 1px;
+    margin-top: -3px;
+    position: relative;
+
+}
+
+</style><div class="article__section-navigator clearfix"><div class="previous nav_link"><span>PREVIOUS</span><a href="/2021/08/04/ner_conll_roberta_base_en.html">Named Entity Recognition - CoNLL03 RoBERTa (ner_conll_roberta_base)</a></div><div class="next nav_link"><span>NEXT</span><a href="/2021/08/04/ner_conll_xlm_roberta_base_en.html">Named Entity Recognition - CoNLL03 XLM-RoBERTa (ner_conll_xlm_roberta_base)</a></div></div></div>
+
+</div>
+</div>
+
+<script>(function() {
+  var SOURCES = window.TEXT_VARIABLES.sources;
+  window.Lazyload.js(SOURCES.jquery, function() {
+    $(function() {
+      var $this ,$scroll;
+      var $articleContent = $('.js-article-content');
+      var hasSidebar = $('.js-page-root').hasClass('layout--page--sidebar');
+      var scroll = hasSidebar ? '.js-page-main' : 'html, body';
+      $scroll = $(scroll);
+
+      $articleContent.find('.highlight').each(function() {
+        $this = $(this);
+        $this.attr('data-lang', $this.find('code').attr('data-lang'));
+      });
+      $articleContent.find('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]').each(function() {
+        $this = $(this);
+        $this.append($('<a class="anchor d-print-none" aria-hidden="true"></a>').html('<i class="fas fa-anchor"></i>'));
+      });
+      $articleContent.on('click', '.anchor', function() {
+        $scroll.scrollToAnchor('#' + $(this).parent().attr('id'), 400);
+      });
+    });
+  });
+})();
+</script>
 </div><section class="page__comments d-print-none"></section></article><!-- start custom main bottom snippet -->
 
 <!-- end custom main bottom snippet --></div>
-            </div></div><div class="page__footer d-print-none">
+            </div></div></div><div class="page__footer d-print-none">
 <footer class="footer py-4 js-page-footer">
   <div class="main"><div itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content=""><meta itemprop="url" content="/"></div><div class="site-info mt-2">

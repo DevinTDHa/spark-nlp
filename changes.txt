@@ -1,2 +1,4 @@
-docs/en/transformers.md
-docs/en/transformers.md
+.github/workflows/publish_docs.yaml
+docs/en/release_notes.md
+.github/workflows/publish_docs.yaml
+docs/en/release_notes.md

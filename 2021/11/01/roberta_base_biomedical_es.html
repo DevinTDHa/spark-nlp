@@ -404,8 +404,8 @@
               <div class="col-main cell cell--auto"><!-- start custom main top snippet -->
 
 <!-- end custom main top snippet --><article><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script><div class="article__header"><div class="header-author"><div class="article__info clearfix"><ul class="right-col menu"><li><i class="far fa-user"></i> <span>John Snow Labs</span></li><li><i class="far fa-calendar-alt"></i> <span>Nov 01, 2021</span>
-            </li></ul></div><meta itemprop="author" content=""/><meta itemprop="datePublished" content="2021-11-01T00:00:00+00:00"></div><header><h1>Roberta Clinical Word Embeddings (Spanish)</h1></header></div><meta itemprop="headline" content="Roberta Clinical Word Embeddings (Spanish)"><div class="article__info tags_box clearfix"><ul class="left-col menu"><li>embeddings</li><li>spanish</li><li>biomedical</li><li>clinical</li><li>roberta</li><li>es</li><li>licensed</li></ul></div><meta itemprop="author" content=""/><meta itemprop="datePublished" content="2021-11-01T00:00:00+00:00">
-    <meta itemprop="keywords" content="embeddings,spanish,biomedical,clinical,roberta,es,licensed"><div class="js-article-content"><div class="model-wrap"><div class="layout--article"><!-- start custom article top snippet -->
+            </li></ul></div><meta itemprop="author" content=""/><meta itemprop="datePublished" content="2021-11-01T00:00:00+00:00"></div><header><h1>Roberta Clinical Word Embeddings (Spanish)</h1></header></div><meta itemprop="headline" content="Roberta Clinical Word Embeddings (Spanish)"><div class="article__info tags_box clearfix"><ul class="left-col menu"><li>embeddings</li><li>spanish</li><li>biomedical</li><li>clinical</li><li>roberta</li><li>es</li></ul></div><meta itemprop="author" content=""/><meta itemprop="datePublished" content="2021-11-01T00:00:00+00:00">
+    <meta itemprop="keywords" content="embeddings,spanish,biomedical,clinical,roberta,es"><div class="js-article-content"><div class="model-wrap"><div class="layout--article"><!-- start custom article top snippet -->
 
 <!-- end custom article top snippet --><div class="article__content" itemprop="articleBody"><h2 id="description">Description</h2>
 
@@ -419,7 +419,7 @@
 
 <p class="btn-box"><button class="button button-orange" disabled="">Live Demo</button>
 <button class="button button-orange" disabled="">Open in Colab</button>
-<a href="https://s3.amazonaws.com/auxdata.johnsnowlabs.com/clinical/models/roberta_base_biomedical_es_3.3.0_3.0_1635781845226.zip" class="button button-orange button-orange-trans arr button-icon">Download</a></p>
+<a href="https://s3.amazonaws.com/auxdata.johnsnowlabs.com/public/models/roberta_base_biomedical_es_3.3.0_3.0_1635781845226.zip" class="button button-orange button-orange-trans arr button-icon">Download</a></p>
 
 <h2 id="how-to-use">How to use</h2>
 
@@ -435,7 +435,7 @@
     <span class="p">.</span><span class="n">setInputCols</span><span class="p">(</span><span class="s">"document"</span><span class="p">)</span>\
     <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">"token"</span><span class="p">)</span>
 
-<span class="n">roberta_embeddings</span> <span class="o">=</span> <span class="n">RoBertaEmbeddings</span><span class="p">.</span><span class="n">pretrained</span><span class="p">(</span><span class="sa">f</span><span class="s">"roberta_base_biomedical"</span><span class="p">,</span> <span class="s">"es"</span><span class="p">,</span> <span class="s">"clinical/models"</span><span class="p">)</span>\
+<span class="n">roberta_embeddings</span> <span class="o">=</span> <span class="n">RoBertaEmbeddings</span><span class="p">.</span><span class="n">pretrained</span><span class="p">(</span><span class="sa">f</span><span class="s">"roberta_base_biomedical"</span><span class="p">,</span> <span class="s">"es"</span><span class="p">)</span>\
     <span class="p">.</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">"document"</span><span class="p">,</span> <span class="s">"token"</span><span class="p">])</span>\
     <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">"roberta_embeddings"</span><span class="p">)</span>
 
@@ -452,7 +452,7 @@
     <span class="o">.</span><span class="py">setInputCols</span><span class="o">(</span><span class="s">"document"</span><span class="o">)\</span>
     <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"token"</span><span class="o">)</span>
 
-<span class="k">val</span> <span class="nv">roberta_embeddings</span> <span class="k">=</span> <span class="nv">RoBertaEmbeddings</span><span class="o">.</span><span class="py">pretrained</span><span class="o">(</span><span class="n">f</span><span class="s">"roberta_base_biomedical"</span><span class="o">,</span> <span class="s">"es"</span><span class="o">,</span> <span class="s">"clinical/models"</span><span class="o">)\</span>
+<span class="k">val</span> <span class="nv">roberta_embeddings</span> <span class="k">=</span> <span class="nv">RoBertaEmbeddings</span><span class="o">.</span><span class="py">pretrained</span><span class="o">(</span><span class="n">f</span><span class="s">"roberta_base_biomedical"</span><span class="o">,</span> <span class="s">"es"</span><span class="o">)\</span>
     <span class="o">.</span><span class="py">setInputCols</span><span class="o">(</span><span class="s">"document"</span><span class="o">,</span> <span class="s">"token"</span><span class="o">)\</span>
     <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"roberta_embeddings"</span><span class="o">)</span>
 

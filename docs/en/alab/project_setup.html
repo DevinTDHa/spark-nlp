@@ -387,7 +387,7 @@
 <path d="M20.2658 26.412H8.38867V26.5781H20.2658V26.412Z" fill="#9EDEFA"/>
 </svg>
 -->
-</a><div class="sidebar-toc"><ul class="toc toc--navigator"><li class="toc-h1">Annotation Lab</li><li class="toc-h2"><a href="/docs/en/alab/quickstart">Getting Started</a></li><li class="toc-h2"><a href="/docs/en/alab/install">Installation</a></li><li class="toc-h2"><a href="/docs/en/alab/start_page">Start Page</a></li><li class="toc-h2"><a href="/docs/en/alab/user_management">User Management</a></li><li class="toc-h2 active"><a href="/docs/en/alab/project_setup">Project Setup</a></li><li class="toc-h2"><a href="/docs/en/alab/models_hub">NLP Models Hub</a></li><li class="toc-h2"><a href="/docs/en/alab/preannotations">Preannotations with Spark NLP</a></li><li class="toc-h2"><a href="/docs/en/alab/active_learning">Active Learning</a></li><li class="toc-h2"><a href="/docs/en/alab/import">Import Documents</a></li><li class="toc-h2"><a href="/docs/en/alab/tasks">Tasks</a></li><li class="toc-h2"><a href="/docs/en/alab/annotation">Annotate</a></li><li class="toc-h2"><a href="/docs/en/alab/visual_ner">Visual NER</a></li><li class="toc-h2"><a href="/docs/en/alab/settings">Annotation Settings</a></li><li class="toc-h2"><a href="/docs/en/alab/analytics">Analytics</a></li><li class="toc-h2"><a href="/docs/en/alab/export">Export Data</a></li><li class="toc-h2"><a href="/docs/en/alab/workflow">Workflow Setup</a></li><li class="toc-h2"><a href="/docs/en/alab/byol">License Setup</a></li><li class="toc-h2"><a href="/docs/en/alab/api">API Integration</a></li><li class="toc-h2"><a href="/docs/en/alab/security">Security and Privacy</a></li><li class="toc-h2"><a href="/docs/en/alab/tutorials">Video Tutorials</a></li><li class="toc-h2"><a href="/docs/en/alab/release_notes">Release Notes</a></li></ul></div></div><div class="page__main js-page-main has-aside cell cell--auto">
+</a><div class="sidebar-toc"><ul class="toc toc--navigator"><li class="toc-h1">Annotation Lab</li><li class="toc-h2"><a href="/docs/en/alab/quickstart">Getting Started</a></li><li class="toc-h2"><a href="/docs/en/alab/install">Installation</a></li><li class="toc-h2"><a href="/docs/en/alab/start_page">Home Page</a></li><li class="toc-h2 active"><a href="/docs/en/alab/project_setup">Project Setup</a></li><li class="toc-h2"><a href="/docs/en/alab/models_hub">NLP Models Hub</a></li><li class="toc-h2"><a href="/docs/en/alab/preannotations">Preannotations with Spark NLP</a></li><li class="toc-h2"><a href="/docs/en/alab/active_learning">Active Learning</a></li><li class="toc-h2"><a href="/docs/en/alab/import">Import Documents</a></li><li class="toc-h2"><a href="/docs/en/alab/tasks">Tasks</a></li><li class="toc-h2"><a href="/docs/en/alab/annotation">Annotate</a></li><li class="toc-h2"><a href="/docs/en/alab/visual_ner">Visual NER</a></li><li class="toc-h2"><a href="/docs/en/alab/settings">Annotation Settings</a></li><li class="toc-h2"><a href="/docs/en/alab/analytics">Analytics</a></li><li class="toc-h2"><a href="/docs/en/alab/export">Export Data</a></li><li class="toc-h2"><a href="/docs/en/alab/user_management">User Management</a></li><li class="toc-h2"><a href="/docs/en/alab/workflow">Workflow Setup</a></li><li class="toc-h2"><a href="/docs/en/alab/byol">License Setup</a></li><li class="toc-h2"><a href="/docs/en/alab/api">API Integration</a></li><li class="toc-h2"><a href="/docs/en/alab/security">Security and Privacy</a></li><li class="toc-h2"><a href="/docs/en/alab/tutorials">Video Tutorials</a></li><li class="toc-h2"><a href="/docs/en/alab/release_notes">Release Notes</a></li></ul></div></div><div class="page__main js-page-main has-aside cell cell--auto">
 
       <div class="page__main-inner"><div class="page__header d-print-none"><!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-59JLR64"
@@ -527,7 +527,14 @@
             <i class="far fa-edit"></i></a></div><meta itemprop="headline" content="Project Setup"><meta itemprop="author" content=""/><div class="js-article-content"><div class="docs-wrapper">
 <div class="layout--article"><!-- start custom article top snippet -->
 
-<!-- end custom article top snippet --><div class="article__content" itemprop="articleBody"><p>To create a new project, click on the <strong>Create Project</strong> button on the <strong>Home Page</strong> and choose a name for it. The project can include a short description and annotation instructions/guidelines.</p>
+<!-- end custom article top snippet --><div class="article__content" itemprop="articleBody"><p>Every project in Annotation Lab should have the following information:</p>
+<ul>
+  <li>a unique <em>name</em> and a short description;</li>
+  <li>a <em>team</em> of annotators, reviewers and a manager which will colaborate on the project;</li>
+  <li>a <em>configuration</em> which specifies the type of annotations that will be created.</li>
+</ul>
+
+<p>To create a new project, click on the <strong>Create Project</strong> button on the <strong>Home Page</strong> and choose a name for it. The project can include a short description and annotation instructions/guidelines.</p>
 
 <p><img class="image image--xl" src="/assets/images/annotation_lab/1.6.0/project_creation.png" style="width:100%; align:left; box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);" /></p>
 
@@ -628,8 +635,25 @@ A simple Labeling Config with Assertion Status defined should look like the foll
 <p>No other constraints can currently be enforced on the labels linked by the defined relations so the annotators must be extra careful and follow the annotation guidelines that specify how the defined relations can be used.</p>
 
 <h2 id="project-validations">Project Validations</h2>
+
 <p>Annotation Lab validates the defined configurations before allowing users to save them. Error messages are shown on the preview section. For instance, if the labels names do not align with the lables of the corresponding models an error is displayed. The same happens if reserved shortcut keys are used or if incompatible pretrained models are selected for preannotations.
  <img class="image image--xl" src="/assets/images/annotation_lab/2.0.0/validation.gif" style="width:100%; align:center; box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);" /></p>
+
+<h2 id="delete-a-project">Delete a Project</h2>
+
+<p>To delete a project, on the <em>Home</em> screen click on the settings icon for that project. This will redirect you to the <em>Project Setup</em> screen where you will have the <em>Delete Project</em> button under the Project Instructions text area. Click on the <em>Delete Project</em> button and confirm the deletion by clicking on the <em>Yes</em> button on the popup.</p>
+
+<h2 id="best-practices">Best practices</h2>
+
+<ul>
+  <li>
+    <p>Use Google Chrome. While Annotation Lab will work on other web browsers, we recommend using it on Google Chrome to ensure the best experience.</p>
+  </li>
+  <li>
+    <p>Use one browser window at a time. Using the Annotation Lab web application via multiple sessions in parallel (i.e., multiple browser windows/tabs) connected with the same user account is not recommended.</p>
+  </li>
+</ul>
+
 </div><div class="d-print-none"><footer class="article__footer"><span class="footer_date">Last updated
       <time itemprop="dateModified" datetime="2020-11-18T00:00:00+00:00">Nov 18, 2020</time>
     </span><!-- start custom article footer snippet -->
@@ -757,7 +781,7 @@ hr.code-selector-underlie {
 
 }
 
-</style><div class="article__section-navigator clearfix"><div class="previous nav_link"><span>PREVIOUS</span><a href="/docs/en/alab/user_management">User Management</a></div><div class="next nav_link"><span>NEXT</span><a href="/docs/en/alab/models_hub">NLP Models Hub</a></div></div></div>
+</style><div class="article__section-navigator clearfix"><div class="previous nav_link"><span>PREVIOUS</span><a href="/docs/en/alab/start_page">Home Page</a></div><div class="next nav_link"><span>NEXT</span><a href="/docs/en/alab/models_hub">NLP Models Hub</a></div></div></div>
 
 </div>
 </div>

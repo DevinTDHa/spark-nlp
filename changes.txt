@@ -1,4 +1,2 @@
-src/main/scala/com/johnsnowlabs/ml/tensorflow/TensorflowMarian.scala
-src/main/scala/com/johnsnowlabs/nlp/annotators/seq2seq/MarianTransformer.scala
-src/main/scala/com/johnsnowlabs/ml/tensorflow/TensorflowMarian.scala
-src/main/scala/com/johnsnowlabs/nlp/annotators/seq2seq/MarianTransformer.scala
+docs/_posts/maziyarpanahi/2021-11-01-bert_large_sequence_classifier_imdb_en.md
+docs/_posts/maziyarpanahi/2021-11-01-bert_large_sequence_classifier_imdb_en.md

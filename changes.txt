@@ -1,2 +1,4 @@
-docs/_posts/maziyarpanahi/2021-11-01-bert_large_sequence_classifier_imdb_en.md
-docs/_posts/maziyarpanahi/2021-11-01-bert_large_sequence_classifier_imdb_en.md
+docs/en/licensed_annotator_entries/ChunkKeyPhraseExtraction.md
+docs/en/licensed_annotators.md
+docs/en/licensed_annotator_entries/ChunkKeyPhraseExtraction.md
+docs/en/licensed_annotators.md

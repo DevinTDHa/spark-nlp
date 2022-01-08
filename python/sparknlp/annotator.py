@@ -10446,7 +10446,7 @@ class MultiClassifierDLModel(AnnotatorModel, HasStorageRef):
     |This is pretty good stuff!|[]              |
     |Wtf kind of crap is this  |[toxic, obscene]|
     +--------------------------+----------------+
-    
+
     See Also
     --------
     ClassifierDLModel : for single-class classification
@@ -14726,8 +14726,8 @@ class LongformerForTokenClassification(AnnotatorModel,
 
 class EntityRulerApproach(AnnotatorApproach, HasStorage):
     """Fits an Annotator to match exact strings or regex patterns provided in a
-    file against a Document and assigns them an named entity. The definitions
-    can contain any number of named entities.
+    file against a token and assigns them a named entity. The definitions can
+    contain any number of named entities.
 
     There are multiple ways and formats to set the extraction resource. It is
     possible to set it either as a "JSON", "JSONL" or "CSV" file. A path to the
@@ -14741,16 +14741,22 @@ class EntityRulerApproach(AnnotatorApproach, HasStorage):
     If the file is in a JSON format, then the rule definitions need to be given
     in a list with the fields "id", "label" and "patterns"::
 
-         [
+        [
             {
-              "id": "person-regex",
-              "label": "PERSON",
-              "patterns": ["\\w+\\s\\w+", "\\w+-\\w+"]
+                "label": "PERSON",
+                "patterns": ["Jon", "John", "John Snow"]
             },
             {
-              "id": "locations-words",
-              "label": "LOCATION",
-              "patterns": ["Winterfell"]
+                "label": "PERSON",
+                "patterns": ["Stark", "Snow"]
+            },
+            {
+                "label": "PERSON",
+                "patterns": ["Eddard", "Eddard Stark"]
+            },
+            {
+                "label": "LOCATION",
+                "patterns": ["Winterfell"]
             }
         ]
 
@@ -14759,6 +14765,7 @@ class EntityRulerApproach(AnnotatorApproach, HasStorage):
         {"id": "names-with-j", "label": "PERSON", "patterns": ["Jon", "John", "John Snow"]}
         {"id": "names-with-s", "label": "PERSON", "patterns": ["Stark", "Snow"]}
         {"id": "names-with-e", "label": "PERSON", "patterns": ["Eddard", "Eddard Stark"]}
+        {"id": "locations", "label": "LOCATION", "patterns": ["Winterfell"]}
 
     In order to use a CSV file, an additional parameter "delimiter" needs to be
     set. In this case, the delimiter might be set by using
@@ -14768,6 +14775,39 @@ class EntityRulerApproach(AnnotatorApproach, HasStorage):
         PERSON|John
         PERSON|John Snow
         LOCATION|Winterfell
+
+    Notes
+    -----
+
+    As this annotator is operating on a token level, it will not extract
+    entities on the whole document. To extract entities that are split up by the
+    tokenizer (e.g. expressions containing spaces), it is necessary to set an
+    exception for these in the Tokenizer. For example, if we want to extract
+    "Jon Snow" and "Eddard Stark", then we need to define tokenizer like so:
+
+    >>> tokenizer = Tokenizer() \\
+    ... .setInputCols("document")  \\
+    ... .setOutputCol("token") \\
+    ... .setExceptions(["Jon Snow", "Eddard Stark"])
+
+    Then we can define a pattern which includes spaces::
+
+        [
+            {
+                "id": "person-regex",
+                "label": "PERSON",
+                "patterns": ["\\w+\\s\\w+", "\\w+-\\w+"]
+            }
+        ]
+
+    which will result in the names being extracted::
+
+        +----------------------------------------------------------------------------------------------------------------------------------------+
+        |entity                                                                                                                                  |
+        +----------------------------------------------------------------------------------------------------------------------------------------+
+        |[[chunk, 5, 16, Eddard Stark, [entity -> PERSON, sentence -> 0], []], [chunk, 47, 55, Jon Snow, [entity -> PERSON, sentence -> 1], []]]|
+        +----------------------------------------------------------------------------------------------------------------------------------------+
+
 
     ====================== ======================
     Input Annotation types Output Annotation type

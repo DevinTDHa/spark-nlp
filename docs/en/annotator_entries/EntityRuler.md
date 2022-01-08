@@ -28,7 +28,7 @@ CHUNK
 {%- endcapture -%}
 
 {%- capture approach_description -%}
-Fits an Annotator to match exact strings or regex patterns provided in a file against a Document and assigns them an
+Fits an Annotator to match exact strings or regex patterns provided in a file against a token and assigns them a
 named entity. The definitions can contain any number of named entities.
 
 There are multiple ways and formats to set the extraction resource. It is possible to set it either as a "JSON",
@@ -41,14 +41,20 @@ To enable regex extraction, `setEnablePatternRegex(true)` needs to be called.
 If the file is in a JSON format, then the rule definitions need to be given in a list with the fields "id", "label"
 and "patterns":
 ```
- [
+[
   {
-    "id": "person-regex",
     "label": "PERSON",
-    "patterns": ["\\w+\\s\\w+", "\\w+-\\w+"]
+    "patterns": ["Jon", "John", "John Snow"]
   },
   {
-    "id": "locations-words",
+    "label": "PERSON",
+    "patterns": ["Stark", "Snow"]
+  },
+  {
+    "label": "PERSON",
+    "patterns": ["Eddard", "Eddard Stark"]
+  },
+  {
     "label": "LOCATION",
     "patterns": ["Winterfell"]
   }
@@ -60,6 +66,7 @@ The same fields also apply to a file in the JSONL format:
 {"id": "names-with-j", "label": "PERSON", "patterns": ["Jon", "John", "John Snow"]}
 {"id": "names-with-s", "label": "PERSON", "patterns": ["Stark", "Snow"]}
 {"id": "names-with-e", "label": "PERSON", "patterns": ["Eddard", "Eddard Stark"]}
+{"id": "locations", "label": "LOCATION", "patterns": ["Winterfell"]}
 ```
 
 
@@ -70,6 +77,39 @@ PERSON|Jon
 PERSON|John
 PERSON|John Snow
 LOCATION|Winterfell
+```
+
+**Note:**
+
+As this annotator is operating on a token level, it will not extract entities on the whole document.
+To extract entities that are split up by the tokenizer (e.g. expressions containing spaces), it is necessary to set
+an exception for these in the Tokenizer.
+For example, if we want to extract "Jon Snow" and "Eddard Stark", then we need to define tokenizer like so:
+
+```
+val tokenizer = new Tokenizer()
+  .setInputCols("document")
+  .setOutputCol("token")
+  .setExceptions(Array("Jon Snow", "Eddard Stark"))
+```
+
+Then we can define a pattern which includes spaces:
+```json
+[
+  {
+    "id": "person-regex",
+    "label": "PERSON",
+    "patterns": ["\\w+\\s\\w+", "\\w+-\\w+"]
+  }
+]
+```
+which will result in the names being extracted:
+```
++----------------------------------------------------------------------------------------------------------------------------------------+
+|entity                                                                                                                                  |
++----------------------------------------------------------------------------------------------------------------------------------------+
+|[[chunk, 5, 16, Eddard Stark, [entity -> PERSON, sentence -> 0], []], [chunk, 47, 55, Jon Snow, [entity -> PERSON, sentence -> 1], []]]|
++----------------------------------------------------------------------------------------------------------------------------------------+
 ```
 {%- endcapture -%}
 

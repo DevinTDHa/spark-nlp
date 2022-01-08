@@ -152,14 +152,14 @@ class Tokenizer(override val uid: String) extends AnnotatorApproach[TokenizerMod
     *
     * Defaults to: "\\S+" which means anything not a space will be matched and considered as a token candidate, This will cause text to be split on on white spaces to yield token candidates.
     *
-    * This rule will be added to the BREAK_PATTERN varaible, which is used to yield token candidates.
+    * This rule will be added to the BREAK_PATTERN variable, which is used to yield token candidates.
     *
     * {{{
     * import org.apache.spark.ml.Pipeline
     * import com.johnsnowlabs.nlp.annotators.Tokenizer
     * import com.johnsnowlabs.nlp.DocumentAssembler
     *
-    * val textDf = sqlContext.sparkContext.parallelize(Array("I only consider lowercase characters and NOT UPPERCASED and only the numbers 0,1, to 7 as tokens but not 8 or 9")).toDF("text")
+    * val textDf = sqlContext.sparkContext.parallelize(Array("I only consider lowercase characters and NOT UPPERCASE and only the numbers 0,1, to 7 as tokens but not 8 or 9")).toDF("text")
     * val documentAssembler = new DocumentAssembler().setInputCol("text").setOutputCol("sentences")
     * val tokenizer = new Tokenizer().setInputCols("sentences").setOutputCol("tokens").setTargetPattern("a-z-0-7")
     * new Pipeline().setStages(Array(documentAssembler, tokenizer)).fit(textDf).transform(textDf).select("tokens.result").show(false)
@@ -269,7 +269,7 @@ class Tokenizer(override val uid: String) extends AnnotatorApproach[TokenizerMod
   def setInfixPatterns(value: Array[String]): this.type = set(infixPatterns, value)
 
   /**
-    * Add an extension pattern regex with groups to the top of thsetExceptionse rules (will target first, from more specific to the more general).
+    * Add an extension pattern regex with groups to the top of the setExceptions rules (will target first, from more specific to the more general).
     *
     * @group setParam
     */

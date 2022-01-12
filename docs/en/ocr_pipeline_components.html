@@ -27,7 +27,8 @@
 <meta name="msapplication-TileColor" content="#ffc40d"><meta name="msapplication-config" content="/assets/browserconfig.xml">
 
 <meta name="theme-color" content="#ffffff">
-<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" ><!-- start custom head snippets -->
+<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" >
+<link rel="stylesheet" href="/static/models.css" /><!-- start custom head snippets -->
  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"> 
  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 <!-- end custom head snippets -->
@@ -685,7 +686,7 @@
   <span class="p">.</span><span class="n">setInputCol</span><span class="p">(</span><span class="s">"content"</span><span class="p">)</span> \
   <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">"text"</span><span class="p">)</span> \
   <span class="p">.</span><span class="n">setPageNumCol</span><span class="p">(</span><span class="s">"pagenum"</span><span class="p">)</span> \
-  <span class="p">.</span><span class="n">setSplitPage</span><span class="p">(</span><span class="n">true</span><span class="p">)</span>
+  <span class="p">.</span><span class="n">setSplitPage</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
 
 <span class="n">data</span> <span class="o">=</span> <span class="n">transformer</span><span class="p">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 
@@ -890,7 +891,7 @@ Number of partitions should be equal number of cores/executors.</p>
  <span class="p">.</span><span class="n">setInputCol</span><span class="p">(</span><span class="s">"content"</span><span class="p">)</span> \
  <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">"text"</span><span class="p">)</span> \
  <span class="p">.</span><span class="n">setPageNumCol</span><span class="p">(</span><span class="s">"pagenum"</span><span class="p">)</span> \
- <span class="p">.</span><span class="n">setSplitPage</span><span class="p">(</span><span class="n">true</span><span class="p">)</span>
+ <span class="p">.</span><span class="n">setSplitPage</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
 
 <span class="n">data</span> <span class="o">=</span>  <span class="n">pdfToImage</span><span class="p">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 
@@ -4369,6 +4370,12 @@ It support removing:</p>
       <td> </td>
       <td>Columns which need to explode</td>
     </tr>
+    <tr>
+      <td>rotated</td>
+      <td>boolean</td>
+      <td>False</td>
+      <td>Support rotated regions</td>
+    </tr>
   </tbody>
 </table>
 
@@ -4707,6 +4714,12 @@ It support removing:</p>
       <td>12</td>
       <td>Font size for render labels and score</td>
     </tr>
+    <tr>
+      <td>rotated</td>
+      <td>boolean</td>
+      <td>False</td>
+      <td>Support rotated regions</td>
+    </tr>
   </tbody>
 </table>
 
@@ -4925,6 +4938,18 @@ to <em>outputCol</em> and positions with font size to ‘positionsCol’ column.
       <td>bool</td>
       <td>false</td>
       <td>Include spaces to output positions.</td>
+    </tr>
+    <tr>
+      <td>keepLayout</td>
+      <td>bool</td>
+      <td>false</td>
+      <td>Keep layout of text at result.</td>
+    </tr>
+    <tr>
+      <td>outputSpaceCharacterWidth</td>
+      <td>int</td>
+      <td>8</td>
+      <td>Output space character width in pts for layout keeper.</td>
     </tr>
   </tbody>
 </table>
@@ -6589,7 +6614,7 @@ hr.code-selector-underlie {
 <footer class="footer py-4 js-page-footer">
   <div class="main"><div itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content=""><meta itemprop="url" content="/"></div><div class="site-info mt-2">
-      <div>© 2021 John Snow Labs Inc.
+      <div>© 2022 John Snow Labs Inc.
         <a href="http://www.johnsnowlabs.com/terms-of-service">Terms of Service</a> | <a href="http://www.johnsnowlabs.com/privacy-policy/">Privacy Policy</a>
       </div>
     </div>

@@ -26,7 +26,8 @@
 <meta name="msapplication-TileColor" content="#ffc40d"><meta name="msapplication-config" content="/assets/browserconfig.xml">
 
 <meta name="theme-color" content="#ffffff">
-<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" ><!-- start custom head snippets -->
+<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" >
+<link rel="stylesheet" href="/static/models.css" /><!-- start custom head snippets -->
  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"> 
  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 <!-- end custom head snippets -->
@@ -431,7 +432,7 @@
     <span class="p">.</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">"document"</span><span class="p">])</span>\
     <span class="p">.</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">"sentence_embeddings"</span><span class="p">)</span>
 
-<span class="n">classifier</span> <span class="o">=</span> <span class="n">ClassifierDLModel</span><span class="p">(</span><span class="s">'classifierdl_use_snips'</span><span class="p">).</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">'sentence_embeddings'</span><span class="p">]).</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">'class'</span><span class="p">)</span>
+<span class="n">classifier</span> <span class="o">=</span> <span class="n">ClassifierDLModel</span><span class="p">.</span><span class="n">pretrained</span><span class="p">(</span><span class="s">'classifierdl_use_snips'</span><span class="p">).</span><span class="n">setInputCols</span><span class="p">([</span><span class="s">'sentence_embeddings'</span><span class="p">]).</span><span class="n">setOutputCol</span><span class="p">(</span><span class="s">'class'</span><span class="p">)</span>
 
 <span class="n">nlp_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span><span class="n">stages</span><span class="o">=</span><span class="p">[</span><span class="n">document_assembler</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">,</span> <span class="n">classifier</span><span class="p">])</span>
 
@@ -440,11 +441,11 @@
 <span class="n">annotations</span> <span class="o">=</span> <span class="n">l_model</span><span class="p">.</span><span class="n">fullAnnotate</span><span class="p">([</span><span class="s">"i want to bring six of us to a bistro in town that serves hot chicken sandwich that is within the same area"</span><span class="p">,</span> <span class="s">"show weather forcast for t h  stone memorial st  joseph peninsula state park on one hour from now"</span><span class="p">])</span>
 </code></pre></div>  </div>
   <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">...</span>
-<span class="k">val</span> <span class="nv">embeddings</span> <span class="k">=</span> <span class="nv">UniversalSentenceEncoder</span><span class="o">.</span><span class="py">pretrained</span><span class="o">(</span><span class="ss">'tfhub_us</span><span class="n">e</span><span class="o">',</span> <span class="n">lang</span><span class="o">=</span><span class="s">"en"</span><span class="o">)</span> <span class="o">\</span>
+<span class="k">val</span> <span class="nv">embeddings</span> <span class="k">=</span> <span class="nv">UniversalSentenceEncoder</span><span class="o">.</span><span class="py">pretrained</span><span class="o">(</span><span class="s">"tfhub_use"</span><span class="o">,</span> <span class="n">lang</span><span class="o">=</span><span class="s">"en"</span><span class="o">)</span> <span class="o">\</span>
     <span class="o">.</span><span class="py">setInputCols</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">"document"</span><span class="o">))\</span>
     <span class="o">.</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"sentence_embeddings"</span><span class="o">)</span>
 
-<span class="k">val</span> <span class="nv">classifier</span> <span class="k">=</span> <span class="nc">ClassifierDLModel</span><span class="o">(</span><span class="ss">'classifierdl_use_snip</span><span class="n">s</span><span class="o">',</span> <span class="ss">'e</span><span class="n">n</span><span class="o">').</span><span class="py">setInputCols</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="ss">'sentence_embedding</span><span class="n">s</span><span class="o">')).</span><span class="py">setOutputCol</span><span class="o">(</span><span class="ss">'clas</span><span class="n">s</span><span class="o">')</span>
+<span class="k">val</span> <span class="nv">classifier</span> <span class="k">=</span> <span class="nv">ClassifierDLModel</span><span class="o">.</span><span class="py">pretrained</span><span class="o">(</span><span class="s">"classifierdl_use_snips"</span><span class="o">,</span> <span class="s">"en"</span><span class="o">).</span><span class="py">setInputCols</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">"sentence_embeddings"</span><span class="o">)).</span><span class="py">setOutputCol</span><span class="o">(</span><span class="s">"class"</span><span class="o">)</span>
 
 <span class="k">val</span> <span class="nv">pipeline</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Pipeline</span><span class="o">().</span><span class="py">setStages</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="n">document_assembler</span><span class="o">,</span> <span class="n">embeddings</span><span class="o">,</span> <span class="n">classifier</span><span class="o">))</span>
 
@@ -681,7 +682,7 @@ hr.code-selector-underlie {
 <footer class="footer py-4 js-page-footer">
   <div class="main"><div itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content=""><meta itemprop="url" content="/"></div><div class="site-info mt-2">
-      <div>© 2021 John Snow Labs Inc.
+      <div>© 2022 John Snow Labs Inc.
         <a href="http://www.johnsnowlabs.com/terms-of-service">Terms of Service</a> | <a href="http://www.johnsnowlabs.com/privacy-policy/">Privacy Policy</a>
       </div>
     </div>

@@ -27,7 +27,8 @@
 <meta name="msapplication-TileColor" content="#ffc40d"><meta name="msapplication-config" content="/assets/browserconfig.xml">
 
 <meta name="theme-color" content="#ffffff">
-<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" ><!-- start custom head snippets -->
+<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" >
+<link rel="stylesheet" href="/static/models.css" /><!-- start custom head snippets -->
  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"> 
  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 <!-- end custom head snippets -->
@@ -449,16 +450,28 @@
         <a href="/resolve_entities_codes">Resolve Entities to Codes</a>
       </li>
       <li      >
-        <a href="/recognize_social_determinants">Recognize Social Determinants</a>
+        <a href="/extract_relationships">Extract Relationships</a>
       </li>
       <li      >
-        <a href="/extract_relationships">Extract Relationships</a>
+        <a href="/radiology">Radiology</a>
+      </li>
+      <li      >
+        <a href="/oncology">Oncology</a>
+      </li>
+      <li      >
+        <a href="/social_determinants">Social Determinants</a>
       </li>
       <li      >
         <a href="/split_clean_medical_text">Split &amp; Clean Medical Text</a>
       </li>
       <li      >
-        <a href="/analyze_non_english_medical_text">Analyze non-English Medical Text</a>
+        <a href="/analyze_medical_text_spanish">Analyze Medical Texts in Spanish</a>
+      </li>
+      <li      >
+        <a href="/analyze_medical_text_german">Analyze Medical Texts in German</a>
+      </li>
+      <li      >
+        <a href="/analyze_financial_models">Analyze Financial Models</a>
       </li>
       <li    class="active"     >
         <a href="/medical_risk_scoring">Medical Risk Scoring</a>
@@ -500,7 +513,7 @@
                   </figure>
                   <figure class="tab_fig_white">
                     <img src="/assets/images/Calculate_Medicare_Risk_Score_f.svg" />
-                  </figure><div class="tab-item-title">Calculate Medicare Risk Score</div><div class="tab-description">This demos shows how to calculate medical risk adjustment scores automatically using ICD codes of diseases.</div><ul class="tab-menu"><li><a id="calculate_medicare_risk_score" class="button button--normal button--pill button--lg"
+                  </figure><div class="tab-item-title">Calculate Medicare HCC Risk Score</div><div class="tab-description">This demos shows how to calculate medical risk adjustment scores automatically using ICD codes of diseases.</div><ul class="tab-menu"><li><a id="calculate_medicare_risk_score" class="button button--normal button--pill button--lg"
                       href="https://demo.johnsnowlabs.com/healthcare/HCC_RISK_SCORE/">Live Demo</a></li><li><a id="calculate_medicare_risk_score" class="button button--blue_btn button--pill button--lg"
                       href="https://colab.research.google.com/github/JohnSnowLabs/spark-nlp-workshop/blob/master/tutorials/Certification_Trainings/Healthcare/3.1.Calculate_Medicare_Risk_Adjustment_Score.ipynb">Colab Netbook</a></li></ul></div> 
             </div><div class="tab-item dn">
@@ -523,7 +536,7 @@
 <footer class="footer py-4 js-page-footer">
   <div class="main"><div itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content=""><meta itemprop="url" content="/"></div><div class="site-info mt-2">
-      <div>© 2021 John Snow Labs Inc.
+      <div>© 2022 John Snow Labs Inc.
         <a href="http://www.johnsnowlabs.com/terms-of-service">Terms of Service</a> | <a href="http://www.johnsnowlabs.com/privacy-policy/">Privacy Policy</a>
       </div>
     </div>

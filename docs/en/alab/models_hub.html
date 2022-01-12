@@ -27,7 +27,8 @@
 <meta name="msapplication-TileColor" content="#ffc40d"><meta name="msapplication-config" content="/assets/browserconfig.xml">
 
 <meta name="theme-color" content="#ffffff">
-<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" ><!-- start custom head snippets -->
+<!-- end favicons snippet --><link rel="stylesheet" href="/assets/css/main.css"><link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" >
+<link rel="stylesheet" href="/static/models.css" /><!-- start custom head snippets -->
  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"> 
  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 <!-- end custom head snippets -->
@@ -552,6 +553,37 @@
 <h2 id="available-embeddings-tab">Available Embeddings Tab</h2>
 <p>This tab lists all embeddings available to the Annotation Lab together with information on their source and date of upload/download. Like models, any compatible embeddings can be downloaded from NLP Models Hub. By default, glove_100d embeddings are included in the deployment.</p>
 
+<h2 id="available-rules-tab">Available Rules Tab</h2>
+
+<p>Spark NLP for Healthcare supports rule-based annotations via the ContextualParser Annotator. In this release, Annotationlab adds support for creating and using ContextualParser rules in NER project.</p>
+
+<p>Any user with admin privileges can see and edit the available rules under the <code class="language-plaintext highlighter-rouge">Available Rules</code> tab on the <code class="language-plaintext highlighter-rouge">Models Hub</code> page. Users can create new rules using the <code class="language-plaintext highlighter-rouge">+ Add Rules</code> button.</p>
+
+<p><img class="image image--xl" src="/assets/images/annotation_lab/1.8.0/storage.png" style="width:100%; align:center; box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);" /></p>
+
+<p><img src="https://user-images.githubusercontent.com/33893292/146135833-e38c1014-fb99-48c9-8580-638bb32a2f26.png" alt="Screen Shot 2021-12-15 at 12 16 18 PM" /></p>
+
+<p>There are two types of rules supported:</p>
+
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong><code class="language-plaintext highlighter-rouge">Regex Based:</code></strong> Users can define a regex that will be used to label all possible hit chunks and label them as being the target entity. For example, for labeling height entities the following regex can be used “[0-7]’((0?[0-9])</td>
+          <td>(1(0</td>
+          <td>1)))”. All hits found in the task text that match the regex, are pre-annotated as heights.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li><strong><code class="language-plaintext highlighter-rouge">Dictionary Based:</code></strong> Users can define and upload a CSV dictionary of keywords that cover the list of chunks that should be annotated as a target entity. For example, for the label female: woman, lady, girl, all occurrences of stings woman, lady, and girl within the text of a given task will be perannotated as female.</li>
+</ul>
+
+<p><img src="https://user-images.githubusercontent.com/33893292/145990315-371dd27b-7feb-40c7-a98d-b5e353dc3908.jpg" alt="addrule" /></p>
+
+<p>After adding a rule on <code class="language-plaintext highlighter-rouge">Models Hub</code> page, the <code class="language-plaintext highlighter-rouge">Project Owner</code> or <code class="language-plaintext highlighter-rouge">Manager</code> can add the rule to the configuration of the project where he wants to use it. This can be done via the <code class="language-plaintext highlighter-rouge">Rules</code> tab from the <code class="language-plaintext highlighter-rouge">Project Setup</code> page under the <code class="language-plaintext highlighter-rouge">Project Configuration</code> tab. A valid Spark NLP for Healthcare license is required to deploy rules from project config.</p>
+
 <h2 id="custom-modelsembeddings-upload">Custom Models/Embeddings Upload</h2>
 
 <p>Custom NER models or embeddings can be uploaded using the Upload button present in the top right corner of the page. The labels predicted by the uploaded NER model need to be specified using the Model upload form.</p>
@@ -724,7 +756,7 @@ hr.code-selector-underlie {
 <footer class="footer py-4 js-page-footer">
   <div class="main"><div itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content=""><meta itemprop="url" content="/"></div><div class="site-info mt-2">
-      <div>© 2021 John Snow Labs Inc.
+      <div>© 2022 John Snow Labs Inc.
         <a href="http://www.johnsnowlabs.com/terms-of-service">Terms of Service</a> | <a href="http://www.johnsnowlabs.com/privacy-policy/">Privacy Policy</a>
       </div>
     </div>

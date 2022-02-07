@@ -70,47 +70,47 @@ class DistilBertEmbeddingsTestSpec extends AnyFlatSpec {
     }
   }
 
-  "DistilBertEmbeddings" should "benchmark test" taggedAs SlowTest in {
-    import ResourceHelper.spark.implicits._
-
-    val conll = CoNLL()
-    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
-    println(training_data.count())
-
-    val embeddings = DistilBertEmbeddings.pretrained()
-      .setInputCols("sentence", "token")
-      .setOutputCol("embeddings")
-      .setCaseSensitive(false)
-      .setMaxSentenceLength(512)
-      .setBatchSize(16)
-
-    val pipeline = new Pipeline()
-      .setStages(Array(
-        embeddings
-      ))
-
-    val pipelineDF = pipeline.fit(training_data).transform(training_data)
-    Benchmark.time("Time to save DistilBertEmbeddings results") {
-      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_embeddings")
-    }
-
-    println("missing tokens/embeddings: ")
-    pipelineDF.withColumn("sentence_size", size(col("sentence")))
-      .withColumn("token_size", size(col("token")))
-      .withColumn("embed_size", size(col("embeddings")))
-      .where(col("token_size") =!= col("embed_size"))
-      .select("sentence_size", "token_size", "embed_size", "token.result", "embeddings.result")
-      .show(false)
-
-    println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
-    val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
-    val totalEmbeddings = pipelineDF.select(explode($"embeddings.embeddings")).count.toInt
-
-    println(s"total tokens: $totalTokens")
-    println(s"total embeddings: $totalEmbeddings")
-
-    assert(totalTokens == totalEmbeddings)
-  }
+//  "DistilBertEmbeddings" should "benchmark test" taggedAs SlowTest in {
+//    import ResourceHelper.spark.implicits._
+//
+//    val conll = CoNLL()
+//    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
+//    println(training_data.count())
+//
+//    val embeddings = DistilBertEmbeddings.pretrained()
+//      .setInputCols("sentence", "token")
+//      .setOutputCol("embeddings")
+//      .setCaseSensitive(false)
+//      .setMaxSentenceLength(512)
+//      .setBatchSize(16)
+//
+//    val pipeline = new Pipeline()
+//      .setStages(Array(
+//        embeddings
+//      ))
+//
+//    val pipelineDF = pipeline.fit(training_data).transform(training_data)
+//    Benchmark.time("Time to save DistilBertEmbeddings results") {
+//      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_embeddings")
+//    }
+//
+//    println("missing tokens/embeddings: ")
+//    pipelineDF.withColumn("sentence_size", size(col("sentence")))
+//      .withColumn("token_size", size(col("token")))
+//      .withColumn("embed_size", size(col("embeddings")))
+//      .where(col("token_size") =!= col("embed_size"))
+//      .select("sentence_size", "token_size", "embed_size", "token.result", "embeddings.result")
+//      .show(false)
+//
+//    println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
+//    val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
+//    val totalEmbeddings = pipelineDF.select(explode($"embeddings.embeddings")).count.toInt
+//
+//    println(s"total tokens: $totalTokens")
+//    println(s"total embeddings: $totalEmbeddings")
+//
+//    assert(totalTokens == totalEmbeddings)
+//  }
 
   "DistilBertEmbeddings" should "download, save, and load a model" taggedAs SlowTest in {
 

@@ -122,42 +122,42 @@ class DistilBertForTokenClassificationTestSpec extends AnyFlatSpec {
 
   }
 
-  "DistilBertForTokenClassification" should "benchmark test" taggedAs SlowTest in {
-
-    val conll = CoNLL()
-    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
-
-    val tokenClassifier = DistilBertForTokenClassification.pretrained()
-      .setInputCols(Array("token", "document"))
-      .setOutputCol("ner")
-      .setCaseSensitive(true)
-      .setMaxSentenceLength(512)
-
-    val pipeline = new Pipeline()
-      .setStages(Array(
-        tokenClassifier
-      ))
-
-    val pipelineDF = pipeline.fit(training_data).transform(training_data)
-    Benchmark.time("Time to save DistilBertForTokenClassification results") {
-      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_token_classifier")
-    }
-
-    println("missing tokens/tags: ")
-    pipelineDF.withColumn("sentence_size", size(col("sentence")))
-      .withColumn("token_size", size(col("token")))
-      .withColumn("ner_size", size(col("ner")))
-      .where(col("token_size") =!= col("ner_size"))
-      .select("sentence_size", "token_size", "ner_size", "token.result", "ner.result")
-      .show(false)
-
-    println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
-    val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
-    val totalTags = pipelineDF.select(explode($"ner.result")).count.toInt
-
-    println(s"total tokens: $totalTokens")
-    println(s"total embeddings: $totalTags")
-
-    assert(totalTokens == totalTags)
-  }
+//  "DistilBertForTokenClassification" should "benchmark test" taggedAs SlowTest in {
+//
+//    val conll = CoNLL()
+//    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
+//
+//    val tokenClassifier = DistilBertForTokenClassification.pretrained()
+//      .setInputCols(Array("token", "document"))
+//      .setOutputCol("ner")
+//      .setCaseSensitive(true)
+//      .setMaxSentenceLength(512)
+//
+//    val pipeline = new Pipeline()
+//      .setStages(Array(
+//        tokenClassifier
+//      ))
+//
+//    val pipelineDF = pipeline.fit(training_data).transform(training_data)
+//    Benchmark.time("Time to save DistilBertForTokenClassification results") {
+//      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_token_classifier")
+//    }
+//
+//    println("missing tokens/tags: ")
+//    pipelineDF.withColumn("sentence_size", size(col("sentence")))
+//      .withColumn("token_size", size(col("token")))
+//      .withColumn("ner_size", size(col("ner")))
+//      .where(col("token_size") =!= col("ner_size"))
+//      .select("sentence_size", "token_size", "ner_size", "token.result", "ner.result")
+//      .show(false)
+//
+//    println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
+//    val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
+//    val totalTags = pipelineDF.select(explode($"ner.result")).count.toInt
+//
+//    println(s"total tokens: $totalTokens")
+//    println(s"total embeddings: $totalTags")
+//
+//    assert(totalTokens == totalTags)
+//  }
 }

@@ -73,63 +73,63 @@ class XlnetEmbeddingsTestSpec extends AnyFlatSpec {
 
   }
 
-  "XlnetEmbeddings" should "benchmark test" taggedAs SlowTest in {
-    import ResourceHelper.spark.implicits._
-
-    val conll = CoNLL()
-    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
-
-    val embeddings = XlnetEmbeddings.pretrained()
-      .setInputCols("sentence", "token")
-      .setOutputCol("embeddings")
-      .setMaxSentenceLength(512)
-      .setBatchSize(12)
-
-    val pipeline = new Pipeline()
-      .setStages(Array(
-        embeddings
-      ))
-
-    val pipelineDF = pipeline.fit(training_data).transform(training_data)
-    Benchmark.time("Time to save XlnetEmbeddings results") {
-      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_embeddings")
-    }
-
-    Benchmark.time("Time to finish checking counts in results") {
-      println("missing tokens/embeddings: ")
-      pipelineDF.withColumn("sentence_size", size(col("sentence")))
-        .withColumn("token_size", size(col("token")))
-        .withColumn("embed_size", size(col("embeddings")))
-        .where(col("token_size") =!= col("embed_size"))
-        .select("sentence_size", "token_size", "embed_size")
-        .show(false)
-    }
-
-    Benchmark.time("Time to finish explod/count in results") {
-      println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
-      val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
-      val totalEmbeddings = pipelineDF.select(explode($"embeddings.embeddings")).count.toInt
-
-      println(s"total tokens: $totalTokens")
-      println(s"total embeddings: $totalEmbeddings")
-
-      // it is normal that the embeddings is less than total tokens in a sentence/document
-      // tokens generate multiple sub-wrods or pieces which won't be included in the final results
-      assert(totalTokens >= totalEmbeddings)
-
-      /*
-      Time to save AlbertEmbeddings results: 828.654641349sec
-      missing tokens/embeddings:
-      +-------------+----------+----------+
-      |sentence_size|token_size|embed_size|
-      +-------------+----------+----------+
-      +-------------+----------+----------+
-
-      Time to finish checking counts in results: 1008.313457171sec
-      (total sentences: ,14041)
-      * */
-    }
-  }
+//  "XlnetEmbeddings" should "benchmark test" taggedAs SlowTest in {
+//    import ResourceHelper.spark.implicits._
+//
+//    val conll = CoNLL()
+//    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
+//
+//    val embeddings = XlnetEmbeddings.pretrained()
+//      .setInputCols("sentence", "token")
+//      .setOutputCol("embeddings")
+//      .setMaxSentenceLength(512)
+//      .setBatchSize(12)
+//
+//    val pipeline = new Pipeline()
+//      .setStages(Array(
+//        embeddings
+//      ))
+//
+//    val pipelineDF = pipeline.fit(training_data).transform(training_data)
+//    Benchmark.time("Time to save XlnetEmbeddings results") {
+//      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_embeddings")
+//    }
+//
+//    Benchmark.time("Time to finish checking counts in results") {
+//      println("missing tokens/embeddings: ")
+//      pipelineDF.withColumn("sentence_size", size(col("sentence")))
+//        .withColumn("token_size", size(col("token")))
+//        .withColumn("embed_size", size(col("embeddings")))
+//        .where(col("token_size") =!= col("embed_size"))
+//        .select("sentence_size", "token_size", "embed_size")
+//        .show(false)
+//    }
+//
+//    Benchmark.time("Time to finish explod/count in results") {
+//      println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
+//      val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
+//      val totalEmbeddings = pipelineDF.select(explode($"embeddings.embeddings")).count.toInt
+//
+//      println(s"total tokens: $totalTokens")
+//      println(s"total embeddings: $totalEmbeddings")
+//
+//      // it is normal that the embeddings is less than total tokens in a sentence/document
+//      // tokens generate multiple sub-wrods or pieces which won't be included in the final results
+//      assert(totalTokens >= totalEmbeddings)
+//
+//      /*
+//      Time to save AlbertEmbeddings results: 828.654641349sec
+//      missing tokens/embeddings:
+//      +-------------+----------+----------+
+//      |sentence_size|token_size|embed_size|
+//      +-------------+----------+----------+
+//      +-------------+----------+----------+
+//
+//      Time to finish checking counts in results: 1008.313457171sec
+//      (total sentences: ,14041)
+//      * */
+//    }
+//  }
 
   "XlnetEmbeddings" should "be aligned with custom tokens from Tokenizer" taggedAs SlowTest in {
 

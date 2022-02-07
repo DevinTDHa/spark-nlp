@@ -127,41 +127,41 @@ class LongformerForSequenceClassificationTestSpec extends AnyFlatSpec {
 
   }
 
-  "LongformerForSequenceClassification" should "benchmark test" taggedAs SlowTest in {
-
-    val conll = CoNLL()
-    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
-
-    val classifier = LongformerForSequenceClassification.pretrained()
-      .setInputCols(Array("token", "document"))
-      .setOutputCol("class")
-      .setCaseSensitive(true)
-
-    val pipeline = new Pipeline()
-      .setStages(Array(
-        classifier
-      ))
-
-    val pipelineDF = pipeline.fit(training_data).transform(training_data)
-    Benchmark.time("Time to save LongformerForSequenceClassification results") {
-      pipelineDF.write.mode("overwrite").parquet("./tmp_sequence_classifier")
-    }
-
-    pipelineDF.select("label").show(20, truncate = false)
-    pipelineDF.select("document.result", "label.result").show(20, truncate = false)
-    pipelineDF
-      .withColumn("doc_size", size(col("document")))
-      .withColumn("label_size", size(col("label")))
-      .where(col("doc_size") =!= col("label_size"))
-      .select("doc_size", "label_size", "document.result", "label.result")
-      .show(20, truncate = false)
-
-    val totalDocs = pipelineDF.select(explode($"document.result")).count.toInt
-    val totalLabels = pipelineDF.select(explode($"label.result")).count.toInt
-
-    println(s"total tokens: $totalDocs")
-    println(s"total embeddings: $totalLabels")
-
-    assert(totalDocs == totalLabels)
-  }
+//  "LongformerForSequenceClassification" should "benchmark test" taggedAs SlowTest in {
+//
+//    val conll = CoNLL()
+//    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
+//
+//    val classifier = LongformerForSequenceClassification.pretrained()
+//      .setInputCols(Array("token", "document"))
+//      .setOutputCol("class")
+//      .setCaseSensitive(true)
+//
+//    val pipeline = new Pipeline()
+//      .setStages(Array(
+//        classifier
+//      ))
+//
+//    val pipelineDF = pipeline.fit(training_data).transform(training_data)
+//    Benchmark.time("Time to save LongformerForSequenceClassification results") {
+//      pipelineDF.write.mode("overwrite").parquet("./tmp_sequence_classifier")
+//    }
+//
+//    pipelineDF.select("label").show(20, truncate = false)
+//    pipelineDF.select("document.result", "label.result").show(20, truncate = false)
+//    pipelineDF
+//      .withColumn("doc_size", size(col("document")))
+//      .withColumn("label_size", size(col("label")))
+//      .where(col("doc_size") =!= col("label_size"))
+//      .select("doc_size", "label_size", "document.result", "label.result")
+//      .show(20, truncate = false)
+//
+//    val totalDocs = pipelineDF.select(explode($"document.result")).count.toInt
+//    val totalLabels = pipelineDF.select(explode($"label.result")).count.toInt
+//
+//    println(s"total tokens: $totalDocs")
+//    println(s"total embeddings: $totalLabels")
+//
+//    assert(totalDocs == totalLabels)
+//  }
 }

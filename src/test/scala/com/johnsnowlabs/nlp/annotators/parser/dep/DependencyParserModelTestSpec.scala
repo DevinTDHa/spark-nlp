@@ -100,26 +100,25 @@ class DependencyParserModelTestSpec extends AnyFlatSpec with DependencyParserBeh
     }
   }
 
-  "DependencyParser" should "A Dependency Parser (trained through TreeBank format file)" taggedAs SlowTest in {
+  "A Dependency Parser (trained through TreeBank format file)" should behave like {
     val testDataSet: Dataset[Row] =
       AnnotatorBuilder.withTreeBankDependencyParser(DataBuilder.basicDataBuild(ContentProvider.depSentence))
     initialAnnotations(testDataSet)
   }
 
-  "DependencyParser" should "A dependency parser (trained through TreeBank format file) with an input text of one sentence" taggedAs SlowTest in {
+  "A dependency parser (trained through TreeBank format file) with an input text of one sentence" should behave like {
     val testDataSet = Seq("I saw a girl with a telescope").toDS.toDF("text")
 
     relationshipsBetweenWordsPredictor(testDataSet, pipelineTreeBank)
   }
 
-  "DependencyParser" should "A dependency parser (trained through TreeBank format file) with input text of two sentences" taggedAs SlowTest in {
-    behave like {
+  "A dependency parser (trained through TreeBank format file) with input text of two sentences" should behave like {
       val text = "I solved the problem with statistics. I saw a girl with a telescope"
       val testDataSet = Seq(text).toDS.toDF("text")
       relationshipsBetweenWordsPredictor(testDataSet, pipelineTreeBank)
     }
 
-    "DependencyParser" should "A dependency parser (trained through TreeBank format file) with an input text of several rows" taggedAs SlowTest in {
+    "A dependency parser (trained through TreeBank format file) with an input text of several rows" should behave like {
       val text = Seq(
         "The most troublesome report may be the August merchandise trade deficit due out tomorrow",
         "Meanwhile, September housing starts, due Wednesday, are thought to have inched upward",
@@ -129,7 +128,7 @@ class DependencyParserModelTestSpec extends AnyFlatSpec with DependencyParserBeh
       relationshipsBetweenWordsPredictor(testDataSet, pipelineTreeBank)
     }
 
-    "DependencyParser" should "A dependency parser (trained through Universal Dependencies format file) with an input text of one sentence" taggedAs SlowTest in {
+    "A dependency parser (trained through Universal Dependencies format file) with an input text of one sentence" should behave like {
       val testDataSet = Seq(
         "So what happened?",
         "It should continue to be defanged.",
@@ -138,14 +137,14 @@ class DependencyParserModelTestSpec extends AnyFlatSpec with DependencyParserBeh
       relationshipsBetweenWordsPredictor(testDataSet, pipelineConllU)
     }
 
-    "DependencyParser" should "A dependency parser (trained through Universal Dependencies format file) with input text of two sentences" taggedAs SlowTest in {
+    "A dependency parser (trained through Universal Dependencies format file) with input text of two sentences" should behave like {
       val text = "I solved the problem with statistics. I saw a girl with a telescope"
       val testDataSet = Seq(text).toDS.toDF("text")
 
       relationshipsBetweenWordsPredictor(testDataSet, pipelineConllU)
     }
 
-    "DependencyParser" should "A dependency parser (trained through Universal Dependencies format file) with an input text of several rows" taggedAs SlowTest in {
+    "A dependency parser (trained through Universal Dependencies format file) with an input text of several rows" should behave like {
       val text = Seq(
         "The most troublesome report may be the August merchandise trade deficit due out tomorrow",
         "Meanwhile, September housing starts, due Wednesday, are thought to have inched upward",
@@ -155,7 +154,5 @@ class DependencyParserModelTestSpec extends AnyFlatSpec with DependencyParserBeh
 
       relationshipsBetweenWordsPredictor(testDataSet, pipelineConllU)
     }
-
-  }
 
 }

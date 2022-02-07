@@ -30,95 +30,95 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class AlbertEmbeddingsTestSpec extends AnyFlatSpec {
 
-  "AlbertEmbeddings" should "correctly load pretrained model" taggedAs SlowTest in {
+//  "AlbertEmbeddings" should "correctly load pretrained model" taggedAs SlowTest in {
+//
+//    val smallCorpus = ResourceHelper.spark.read.option("header", "true")
+//      .csv("src/test/resources/embeddings/sentence_embeddings.csv")
+//
+//    val documentAssembler = new DocumentAssembler()
+//      .setInputCol("text")
+//      .setOutputCol("document")
+//
+//    val sentence = new SentenceDetector()
+//      .setInputCols("document")
+//      .setOutputCol("sentence")
+//
+//    val tokenizer = new Tokenizer()
+//      .setInputCols(Array("sentence"))
+//      .setOutputCol("token")
+//
+//    val embeddings = AlbertEmbeddings.
+//      loadSavedModel(
+//        "/Users/maziyar/Downloads/albert-base-v2",
+//        ResourceHelper.spark)
+//      .setInputCols("sentence", "token")
+//      .setOutputCol("embeddings")
+//
+//    val pipeline = new Pipeline()
+//      .setStages(Array(
+//        documentAssembler,
+//        sentence,
+//        tokenizer,
+//        embeddings
+//      ))
+//
+//    val pipelineDF = pipeline.fit(smallCorpus).transform(smallCorpus)
+//    pipelineDF.select("token.result").show(1, truncate = false)
+//    pipelineDF.select("embeddings.result").show(1, truncate = false)
+//    pipelineDF.select("embeddings.metadata").show(1, truncate = false)
+//    pipelineDF.select("embeddings.embeddings").show(1, truncate = 300)
+//    pipelineDF.select(size(pipelineDF("embeddings.embeddings")).as("embeddings_size")).show(1)
+//    Benchmark.time("Time to save BertEmbeddings results") {
+//      pipelineDF.select("embeddings").write.mode("overwrite").parquet("./tmp_albert_embeddings")
+//    }
+//  }
 
-    val smallCorpus = ResourceHelper.spark.read.option("header", "true")
-      .csv("src/test/resources/embeddings/sentence_embeddings.csv")
-
-    val documentAssembler = new DocumentAssembler()
-      .setInputCol("text")
-      .setOutputCol("document")
-
-    val sentence = new SentenceDetector()
-      .setInputCols("document")
-      .setOutputCol("sentence")
-
-    val tokenizer = new Tokenizer()
-      .setInputCols(Array("sentence"))
-      .setOutputCol("token")
-
-    val embeddings = AlbertEmbeddings.
-      loadSavedModel(
-        "/Users/maziyar/Downloads/albert-base-v2",
-        ResourceHelper.spark)
-      .setInputCols("sentence", "token")
-      .setOutputCol("embeddings")
-
-    val pipeline = new Pipeline()
-      .setStages(Array(
-        documentAssembler,
-        sentence,
-        tokenizer,
-        embeddings
-      ))
-
-    val pipelineDF = pipeline.fit(smallCorpus).transform(smallCorpus)
-    pipelineDF.select("token.result").show(1, truncate = false)
-    pipelineDF.select("embeddings.result").show(1, truncate = false)
-    pipelineDF.select("embeddings.metadata").show(1, truncate = false)
-    pipelineDF.select("embeddings.embeddings").show(1, truncate = 300)
-    pipelineDF.select(size(pipelineDF("embeddings.embeddings")).as("embeddings_size")).show(1)
-    Benchmark.time("Time to save BertEmbeddings results") {
-      pipelineDF.select("embeddings").write.mode("overwrite").parquet("./tmp_albert_embeddings")
-    }
-  }
-
-  "AlbertEmbeddings" should "benchmark test" taggedAs SlowTest in {
-    import ResourceHelper.spark.implicits._
-
-    val conll = CoNLL()
-    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
-
-    val embeddings = AlbertEmbeddings
-      .pretrained()
-      .setInputCols("sentence", "token")
-      .setOutputCol("embeddings")
-      .setMaxSentenceLength(512)
-
-    val pipeline = new Pipeline()
-      .setStages(Array(
-        embeddings
-      ))
-
-    val pipelineDF = pipeline.fit(training_data).transform(training_data)
-    Benchmark.time("Time to save AlbertEmbeddings results") {
-      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_embeddings")
-    }
-
-    Benchmark.time("Time to finish checking counts in results") {
-      println("missing tokens/embeddings: ")
-      pipelineDF.withColumn("sentence_size", size(col("sentence")))
-        .withColumn("token_size", size(col("token")))
-        .withColumn("embed_size", size(col("embeddings")))
-        .where(col("token_size") =!= col("embed_size"))
-        .select("sentence_size", "token_size", "embed_size")
-        .show(false)
-    }
-
-    Benchmark.time("Time to finish explod/count in results") {
-      println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
-      val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
-      val totalEmbeddings = pipelineDF.select(explode($"embeddings.embeddings")).count.toInt
-
-      println(s"total tokens: $totalTokens")
-      println(s"total embeddings: $totalEmbeddings")
-
-      // it is normal that the embeddings is less than total tokens in a sentence/document
-      // tokens generate multiple sub-wrods or pieces which won't be included in the final results
-      assert(totalTokens >= totalEmbeddings)
-
-    }
-  }
+//  "AlbertEmbeddings" should "benchmark test" taggedAs SlowTest in {
+//    import ResourceHelper.spark.implicits._
+//
+//    val conll = CoNLL()
+//    val training_data = conll.readDataset(ResourceHelper.spark, "src/test/resources/conll2003/eng.train")
+//
+//    val embeddings = AlbertEmbeddings
+//      .pretrained()
+//      .setInputCols("sentence", "token")
+//      .setOutputCol("embeddings")
+//      .setMaxSentenceLength(512)
+//
+//    val pipeline = new Pipeline()
+//      .setStages(Array(
+//        embeddings
+//      ))
+//
+//    val pipelineDF = pipeline.fit(training_data).transform(training_data)
+//    Benchmark.time("Time to save AlbertEmbeddings results") {
+//      pipelineDF.write.mode("overwrite").parquet("./tmp_bert_embeddings")
+//    }
+//
+//    Benchmark.time("Time to finish checking counts in results") {
+//      println("missing tokens/embeddings: ")
+//      pipelineDF.withColumn("sentence_size", size(col("sentence")))
+//        .withColumn("token_size", size(col("token")))
+//        .withColumn("embed_size", size(col("embeddings")))
+//        .where(col("token_size") =!= col("embed_size"))
+//        .select("sentence_size", "token_size", "embed_size")
+//        .show(false)
+//    }
+//
+//    Benchmark.time("Time to finish explod/count in results") {
+//      println("total sentences: ", pipelineDF.select(explode($"sentence.result")).count)
+//      val totalTokens = pipelineDF.select(explode($"token.result")).count.toInt
+//      val totalEmbeddings = pipelineDF.select(explode($"embeddings.embeddings")).count.toInt
+//
+//      println(s"total tokens: $totalTokens")
+//      println(s"total embeddings: $totalEmbeddings")
+//
+//      // it is normal that the embeddings is less than total tokens in a sentence/document
+//      // tokens generate multiple sub-wrods or pieces which won't be included in the final results
+//      assert(totalTokens >= totalEmbeddings)
+//
+//    }
+//  }
 
   "AlbertEmbeddings" should "be aligned with custom tokens from Tokenizer" taggedAs SlowTest in {
 

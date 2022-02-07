@@ -98,6 +98,7 @@ lazy val utilDependencies = Seq(
     exclude("commons-configuration", "commons-configuration"),
   liblevenshtein
     exclude("com.google.guava", "guava")
+    exclude("com.google.protobuf", "protobuf-java")
     exclude("org.apache.commons", "commons-lang3"),
   greex,
   json4s
@@ -123,7 +124,7 @@ lazy val root = (project in file("."))
       analyticsDependencies ++
         testDependencies ++
         utilDependencies ++
-        tensorflowDependencies ++
+//        tensorflowDependencies ++
         typedDependencyParserDependencies,
     // TODO potentially improve this?
     mavenProps := {

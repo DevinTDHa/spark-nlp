@@ -268,42 +268,46 @@ class TokenizerModel(override val uid: String)
     get(exceptions) match {
       case None => "".r
       case Some(patterns) =>
-        val compiledPattern: Regex =  patterns.map { pattern =>
-          val casedExceptionPattern = if ($(caseSensitiveExceptions)) pattern else "(?i)" + pattern
-          casedExceptionPattern
-        }.mkString("|").r
+        val compiledPattern: Regex = patterns
+          .map { pattern =>
+            val casedExceptionPattern =
+              if ($(caseSensitiveExceptions)) pattern else "(?i)" + pattern
+            casedExceptionPattern
+          }
+          .mkString("|")
+          .r
         compiledExceptions = Some(compiledPattern)
         compiledPattern
     }
   }
 
-  /**
-   * This func generates a Seq of TokenizedSentences from a Seq of Sentences.
-   *
-   * @param sentences to tag
-   * @return Seq of TokenizedSentence objects
-   */
+  /** This func generates a Seq of TokenizedSentences from a Seq of Sentences.
+    *
+    * @param sentences
+    *   to tag
+    * @return
+    *   Seq of TokenizedSentence objects
+    */
   def tag(sentences: Seq[Sentence]): Seq[TokenizedSentence] = {
     lazy val splitCharsExists = $(splitChars).map(_.last.toString)
-    sentences.map {
-      text =>
-        /** Step 1, define breaks from non breaks */
-        val exceptionsDefined = get(exceptions).isDefined
+    sentences.map { text =>
+      /** Step 1, define breaks from non breaks */
+      val exceptionsDefined = get(exceptions).isDefined
 
-        val protectedText = if (exceptionsDefined) {
-          getOrCompileExceptionPattern()
-            .replaceAllIn(text.content, m => m.matched.replaceAll(BREAK_PATTERN, PROTECT_CHAR))
-            .replaceAll(BREAK_PATTERN, BREAK_CHAR)
-        } else {
-          text.content.replaceAll(BREAK_PATTERN, BREAK_CHAR)
-        }
+      val protectedText = if (exceptionsDefined) {
+        getOrCompileExceptionPattern()
+          .replaceAllIn(text.content, m => m.matched.replaceAll(BREAK_PATTERN, PROTECT_CHAR))
+          .replaceAll(BREAK_PATTERN, BREAK_CHAR)
+      } else {
+        text.content.replaceAll(BREAK_PATTERN, BREAK_CHAR)
+      }
 
-        /** Step 2, Return protected tokens back into text and move on */
-        val tokens = SPLIT_PATTERN.r
-          .findAllMatchIn(protectedText)
-          .flatMap { candidate =>
-            if (exceptionsDefined && (candidate.matched.contains(
-              PROTECT_CHAR) || casedMatchExists(candidate.matched))) {
+      /** Step 2, Return protected tokens back into text and move on */
+      val tokens = SPLIT_PATTERN.r
+        .findAllMatchIn(protectedText)
+        .flatMap { candidate =>
+          if (exceptionsDefined && (candidate.matched.contains(PROTECT_CHAR) || casedMatchExists(
+              candidate.matched))) {
 
             /** Put back character and move on */
             Seq(
@@ -324,7 +328,8 @@ class TokenizerModel(override val uid: String)
                   .flatMap(i => {
                     val target = m.content.group(i)
                     val applyPattern = isSet(splitPattern) && (target
-                      .split($(splitPattern)).length > 1)
+                      .split($(splitPattern))
+                      .length > 1)
                     val applyChars = isSet(splitChars) && splitCharsExists.exists(target.contains)
                     if (target.nonEmpty && (applyPattern || applyChars)) {
                       try {
@@ -381,7 +386,7 @@ class TokenizerModel(override val uid: String)
 }
 
 trait ReadablePretrainedTokenizer
-  extends ParamsAndFeaturesReadable[TokenizerModel]
+    extends ParamsAndFeaturesReadable[TokenizerModel]
     with HasPretrained[TokenizerModel] {
   override val defaultModelName: Option[String] = Some("token_rules")
 
@@ -398,6 +403,6 @@ trait ReadablePretrainedTokenizer
 }
 
 /** This is the companion object of [[TokenizerModel]]. Please refer to that class for the
- * documentation.
- */
+  * documentation.
+  */
 object TokenizerModel extends ReadablePretrainedTokenizer

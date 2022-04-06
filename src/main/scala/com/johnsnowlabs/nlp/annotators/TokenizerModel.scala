@@ -23,6 +23,8 @@ import com.johnsnowlabs.nlp._
 import org.apache.spark.ml.param.{BooleanParam, IntParam, Param, StringArrayParam}
 import org.apache.spark.ml.util.Identifiable
 
+import scala.util.matching.Regex
+
 /** Tokenizes raw text into word pieces, tokens. Identifies tokens with tokenization open
   * standards. A few rules will help customizing it if defaults do not fit user needs.
   *
@@ -260,34 +262,47 @@ class TokenizerModel(override val uid: String)
     else
       $(exceptions).exists(e => ("(?i)" + e).r.findFirstIn(candidateMatched).isDefined)
 
-  /** This func generates a Seq of TokenizedSentences from a Seq of Sentences.
-    *
-    * @param sentences
-    *   to tag
-    * @return
-    *   Seq of TokenizedSentence objects
-    */
+  private var compiledExceptions: Option[Regex] = None
+
+  private def getOrCompileExceptionPattern(): Regex = compiledExceptions.getOrElse {
+    get(exceptions) match {
+      case None => "".r
+      case Some(patterns) =>
+        val compiledPattern: Regex =  patterns.map { pattern =>
+          val casedExceptionPattern = if ($(caseSensitiveExceptions)) pattern else "(?i)" + pattern
+          casedExceptionPattern
+        }.mkString("|").r
+        compiledExceptions = Some(compiledPattern)
+        compiledPattern
+    }
+  }
+
+  /**
+   * This func generates a Seq of TokenizedSentences from a Seq of Sentences.
+   *
+   * @param sentences to tag
+   * @return Seq of TokenizedSentence objects
+   */
   def tag(sentences: Seq[Sentence]): Seq[TokenizedSentence] = {
     lazy val splitCharsExists = $(splitChars).map(_.last.toString)
-    sentences.map { text =>
-      /** Step 1, define breaks from non breaks */
-      val protectedText = {
-        get(exceptions)
-          .map(_.foldRight(text.content)((exceptionToken, currentText) => {
-            val casedExceptionPattern =
-              if ($(caseSensitiveExceptions)) exceptionToken else "(?i)" + exceptionToken
-            casedExceptionPattern.r
-              .replaceAllIn(currentText, m => m.matched.replaceAll(BREAK_PATTERN, PROTECT_CHAR))
-          }))
-          .getOrElse(text.content)
-          .replaceAll(BREAK_PATTERN, BREAK_CHAR)
-      }
+    sentences.map {
+      text =>
+        /** Step 1, define breaks from non breaks */
+        val exceptionsDefined = get(exceptions).isDefined
 
-      /** Step 2, Return protected tokens back into text and move on */
-      val tokens = SPLIT_PATTERN.r
-        .findAllMatchIn(protectedText)
-        .flatMap { candidate =>
-          if (get(exceptions).isDefined && (candidate.matched.contains(
+        val protectedText = if (exceptionsDefined) {
+          getOrCompileExceptionPattern()
+            .replaceAllIn(text.content, m => m.matched.replaceAll(BREAK_PATTERN, PROTECT_CHAR))
+            .replaceAll(BREAK_PATTERN, BREAK_CHAR)
+        } else {
+          text.content.replaceAll(BREAK_PATTERN, BREAK_CHAR)
+        }
+
+        /** Step 2, Return protected tokens back into text and move on */
+        val tokens = SPLIT_PATTERN.r
+          .findAllMatchIn(protectedText)
+          .flatMap { candidate =>
+            if (exceptionsDefined && (candidate.matched.contains(
               PROTECT_CHAR) || casedMatchExists(candidate.matched))) {
 
             /** Put back character and move on */
@@ -309,8 +324,7 @@ class TokenizerModel(override val uid: String)
                   .flatMap(i => {
                     val target = m.content.group(i)
                     val applyPattern = isSet(splitPattern) && (target
-                      .split($(splitPattern))
-                      .size > 1)
+                      .split($(splitPattern)).length > 1)
                     val applyChars = isSet(splitChars) && splitCharsExists.exists(target.contains)
                     if (target.nonEmpty && (applyPattern || applyChars)) {
                       try {
@@ -367,9 +381,9 @@ class TokenizerModel(override val uid: String)
 }
 
 trait ReadablePretrainedTokenizer
-    extends ParamsAndFeaturesReadable[TokenizerModel]
+  extends ParamsAndFeaturesReadable[TokenizerModel]
     with HasPretrained[TokenizerModel] {
-  override val defaultModelName = Some("token_rules")
+  override val defaultModelName: Option[String] = Some("token_rules")
 
   /** Java compliant-overrides */
   override def pretrained(): TokenizerModel = super.pretrained()
@@ -384,6 +398,6 @@ trait ReadablePretrainedTokenizer
 }
 
 /** This is the companion object of [[TokenizerModel]]. Please refer to that class for the
-  * documentation.
-  */
+ * documentation.
+ */
 object TokenizerModel extends ReadablePretrainedTokenizer

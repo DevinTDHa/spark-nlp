@@ -15,6 +15,7 @@
 import unittest
 from sparknlp.annotator import *
 from sparknlp.base import *
+from sparknlp.common import *
 from test.util import SparkContextForTest
 
 """

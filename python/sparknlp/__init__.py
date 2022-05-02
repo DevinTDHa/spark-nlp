@@ -198,6 +198,7 @@ def start(gpu=False,
                 else:
                     spark_conf.set("spark.jars.packages", spark_nlp_config.maven_spark)
 
+                # TODO: Fix?
                 if cache_folder != '':
                     spark_conf.config("spark.jsl.settings.pretrained.cache_folder", cache_folder)
                 if log_folder != '':

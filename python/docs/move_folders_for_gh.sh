@@ -8,8 +8,8 @@ echo "Move _modules"
 grep -RiIl '_modules' _build | xargs sed -i 's/_modules/modules/g'
 mv _build/html/_modules _build/html/modules
 
-echo "Move references/_autosummary"
-grep -RiIl '_autosummary' _build | xargs sed -i 's/_autosummary/autosummary/g'
-mv _build/html/reference/_autosummary _build/html/reference/autosummary
+echo "Move references/_autoapi"
+grep -RiIl '_autoapi' _build | xargs sed -i 's/_autoapi/autoapi/g'
+mv _build/html/reference/_autoapi _build/html/reference/autoapi
 
 rm -rf _build/html/_sources

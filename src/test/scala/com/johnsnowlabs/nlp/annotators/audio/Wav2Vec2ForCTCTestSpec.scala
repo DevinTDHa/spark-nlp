@@ -26,7 +26,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 class Wav2Vec2ForCTCTestSpec extends AnyFlatSpec {
   val spark: SparkSession = ResourceHelper.spark
 
-  val wavPath = "src/test/resources/audio/wav/"
+//  val wavPath = "src/test/resources/audio/wav/"
+  val wavPath = "src/test/resources/audio/1272-135031-0014.wav"
+
 
   val wavDf: DataFrame = spark.read
     .format("binaryFile")
@@ -41,7 +43,7 @@ class Wav2Vec2ForCTCTestSpec extends AnyFlatSpec {
 
   val speechToText: Wav2Vec2ForCTC = Wav2Vec2ForCTC
 //    .pretrained()
-    .loadSavedModel("/Users/maziyar/Downloads/export_wav2vec2-base-960h", ResourceHelper.spark)
+    .loadSavedModel("/Users/ducha/Workspace/Temp/export_wav2vec2-base-960h", ResourceHelper.spark)
     .setInputCols("audio_assembler")
     .setOutputCol("text")
     .setBatchSize(1)

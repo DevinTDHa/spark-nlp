@@ -18,11 +18,12 @@ package com.johnsnowlabs.nlp.annotators.audio.util.transform
 
 import com.johnsnowlabs.nlp.annotators.audio.util.io.WavFile
 import com.johnsnowlabs.nlp.{AnnotationAudio, AnnotatorType}
-import com.sun.media.sound.WaveFileReader
+import com.sun.media.sound.{WaveFileReader, WaveFileWriter}
 
-import java.io.{BufferedInputStream, ByteArrayInputStream, InputStream}
-import javax.sound.sampled.{AudioFormat, AudioSystem}
+import java.io.{BufferedInputStream, ByteArrayInputStream, ByteArrayOutputStream, InputStream}
+import javax.sound.sampled.{AudioFileFormat, AudioFormat, AudioSystem}
 import scala.collection.mutable.ArrayBuffer
+import scala.language.postfixOps
 
 /** Utils to check audio files and parse audio byte arrays. */
 private[johnsnowlabs] object AudioProcessors {
@@ -65,22 +66,27 @@ private[johnsnowlabs] object AudioProcessors {
     Iterator continually is.read takeWhile (-1 !=) map (_.toByte) toArray
   }
 
-  def resample(bytes: Array[Byte], SampleRate: Int = 16000): Array[Byte] = {
+  def resample(bytes: Array[Byte], targetSampleRate: Int = 16000): Array[Byte] = {
     val reader = new WaveFileReader
     val inputStream = new ByteArrayInputStream(bytes)
     val audioIn = reader.getAudioInputStream(new BufferedInputStream(inputStream))
     val srcFormat = audioIn.getFormat
     val dstFormat = new AudioFormat(
       srcFormat.getEncoding,
-      SampleRate,
+      targetSampleRate,
       srcFormat.getSampleSizeInBits,
       srcFormat.getChannels,
       srcFormat.getFrameSize,
-      srcFormat.getFrameRate,
+      targetSampleRate.toFloat,
       srcFormat.isBigEndian)
+
     val convertedIn = AudioSystem.getAudioInputStream(dstFormat, audioIn)
 
-    inputStreamToByteArray(new BufferedInputStream(convertedIn))
+    val wavWriter = new WaveFileWriter
+    val outputStream = new ByteArrayOutputStream()
+    val writtenBytes =
+      wavWriter.write(convertedIn, AudioFileFormat.Type.WAVE, outputStream)
+    outputStream.toByteArray
   }
 
   /** Processes the byte array as a WAV file.
@@ -92,13 +98,16 @@ private[johnsnowlabs] object AudioProcessors {
     * @return
     *   AnnotationAudio
     */
-  def processAsWav(rawBytes: Array[Byte]): Array[Float] = {
-    val rawStream: InputStream = new ByteArrayInputStream(resample(rawBytes))
+  def processAsWav(rawBytes: Array[Byte], targetSampleRate: Int): Array[Float] = {
+//    val rawStream: InputStream = new ByteArrayInputStream(resample(rawBytes))
+    val rawStream: InputStream = new ByteArrayInputStream(rawBytes)
     val wavFile = WavFile.readWavStream(rawStream)
 
     val mNumFrames = wavFile.getNumFrames.toInt
-    var mSampleRate = wavFile.getSampleRate.toInt
+    val mSampleRate = wavFile.getSampleRate.toInt
     val mChannels = wavFile.getNumChannels
+
+    new WaveFileWriter
 
 //    val totalNoOfFrames = mNumFrames
 //    val frameOffset = offsetDuration * mSampleRate
@@ -152,15 +161,25 @@ private[johnsnowlabs] object AudioProcessors {
 //        "channels" -> mChannels.toString))
   }
 
+//  def processWav2(rawBytes: Array[Byte], targetSampleRate: Int): Unit = {
+//    val reader = new WaveFileReader
+//    val inputStream = new ByteArrayInputStream(rawBytes)
+//    val audioIn = reader.getAudioInputStream(new BufferedInputStream(inputStream))
+////    val srcFormat = audioIn.getFormat
+//
+//    val buffer = new Array[Float]()(audioIn.available())
+//
+//  }
+
   def processAsFlac(rawBytes: Array[Byte]): Array[Float] = ???
 
-  def loadAudioByteToFloat(rawAudio: Array[Byte], sr: Int): Array[Float] = {
+  def loadAudioByteToFloat(rawAudio: Array[Byte], targetSampleRate: Int): Array[Float] = {
     val magicBytes: String = new String(rawAudio.slice(0, 4))
 
     magicBytes match {
-      case MAGIC_WAV => processAsWav(rawAudio)
+      case MAGIC_WAV => processAsWav(rawAudio, targetSampleRate)
       case MAGIC_FLAC => processAsFlac(rawAudio)
-      case _ => processAsWav(rawAudio)
+      case _ => ???
     }
 
   }

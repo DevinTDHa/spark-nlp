@@ -20,6 +20,8 @@ import com.johnsnowlabs.ml.tensorflow.sentencepiece.SentencePieceWrapper
 import com.johnsnowlabs.nlp.util.io.{ExternalResource, ReadAs, ResourceHelper}
 
 import java.io.File
+import java.net.{URI, URL}
+import java.nio.file.Paths
 
 object LoadExternalModel {
 
@@ -60,10 +62,37 @@ object LoadExternalModel {
 
   }
 
+  /** Retrieves a local path for a model folder.
+    *
+    * If the model is at a remote location it will be downloaded and a local path provided.
+    * Otherwise an URL to the local path of the folder will be returned.
+    *
+    * @param path
+    *   Local or Remote path of the model folder
+    * @return
+    *   URL to the local path of the folder
+    */
+  def retrieveModel(path: String): (URL, String) = {
+
+    val localFileUri: URI = {
+      val tmpFolderPath = ResourceHelper.copyToLocal(path)
+      val uri = URI.create(tmpFolderPath)
+
+      // Get absolute path so file protocol is included
+      if (Option(uri.getScheme).isEmpty) Paths.get(tmpFolderPath).toAbsolutePath.toUri
+      else uri
+    }
+    val localPath: String = localFileUri.getPath
+
+    (localFileUri.toURL, modelSanityCheck(localPath))
+  }
+
   def loadTextAsset(assetPath: String, assetName: String): Array[String] = {
     val assetFile = checkAndCreateFile(assetPath + "/assets", assetName)
+
+    // Convert to URL first to access correct file protocol
     val assetResource =
-      new ExternalResource(assetFile.getAbsolutePath, ReadAs.TEXT, Map("format" -> "text"))
+      new ExternalResource(assetFile.toURI.toURL.toString, ReadAs.TEXT, Map("format" -> "text"))
     ResourceHelper.parseLines(assetResource)
   }
 

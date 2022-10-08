@@ -75,35 +75,38 @@ object ResourceHelper {
 
     val content: Seq[Iterator[String]] = openBuffers.map(c => c.getLines())
 
+    /** Copies the resource into a local temporary folder and returns the folders URI.
+      *
+      * @param prefix
+      *   Prefix for the temporary folder.
+      * @return
+      */
     def copyToLocal(prefix: String = "sparknlp_tmp_"): String = {
       if (fileSystem.getScheme == "file")
         return resource
 
-      val destination = Files.createTempDirectory(prefix).toUri
+      val destination = Files.createTempDirectory(prefix)
+      val destinationUri = destination.toUri
 
       fileSystem.getScheme match {
         case "hdfs" =>
           val files = fileSystem.listFiles(path, false)
           while (files.hasNext) {
-            fileSystem.copyToLocalFile(files.next.getPath, new Path(destination))
+            fileSystem.copyToLocalFile(files.next.getPath, new Path(destinationUri))
           }
         case "dbfs" =>
           val dbfsPath = path.toString.replace("dbfs:/", "/dbfs/")
-          val localFiles = listLocalFiles(dbfsPath)
-          localFiles.foreach { localFile =>
-            val inputStream = getResourceStream(localFile.toString)
-            val targetPath = destination + localFile.toString.split("/").last
-            val targetFile = new File(targetPath)
-            FileUtils.copyInputStreamToFile(inputStream, targetFile)
-          }
+          val sourceFile = new File(dbfsPath)
+          val targetFile = new File(destination.toString)
+          FileUtils.copyDirectory(sourceFile, targetFile)
         case _ =>
           val files = fileSystem.listFiles(path, false)
           while (files.hasNext) {
-            fileSystem.copyFromLocalFile(files.next.getPath, new Path(destination))
+            fileSystem.copyFromLocalFile(files.next.getPath, new Path(destinationUri))
           }
       }
 
-      destination.toString
+      destinationUri.toString
     }
 
     def close(): Unit = {

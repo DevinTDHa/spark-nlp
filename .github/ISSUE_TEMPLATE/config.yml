@@ -1,0 +1,9 @@
+blank_issues_enabled: true
+
+contact_links:
+  - name: Converting models from other libraries? Visit the Discussion to see which are compatible.
+    url: https://github.com/JohnSnowLabs/spark-nlp/discussions/5669
+    about: Feature requests and bug reports related to the website
+  - name: Pretrained models on the NLP Models Hub
+    url: https://nlp.johnsnowlabs.com/models
+    about: A place for sharing and discovering Spark NLP models and pipelines 

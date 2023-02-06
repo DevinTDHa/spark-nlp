@@ -229,9 +229,16 @@ val result_multiple = pipeline_multiple.transform(image_example_df).cache()
 
 ## Example
 
-### Input:
-![Screenshot](../../_examples_ocr/image2.png)
+{%- capture input_image -%}
+![Screenshot](/assets/images/examples_ocr/image2.png)
+{%- endcapture -%}
 
-### Output:
-![Screenshot](../../_examples_ocr/image2_out2.png)
+{%- capture output_image -%}
+![Screenshot](/assets/images/examples_ocr/image2_out2.png)
+{%- endcapture -%}
 
+
+{% include templates/input_output_image.md
+input_image=input_image
+output_image=output_image
+%}

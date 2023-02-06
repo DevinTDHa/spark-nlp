@@ -100,9 +100,10 @@ val result = pipeline().transform(pdf_example_df).cache()
 
 ### Input:
 Representation of images 2 and 3 of the example:
-![Screenshot](../../_examples_ocr/image7.png)
+![Screenshot](/assets/images/examples_ocr/image7.png)
 
-### Output:
+## Output text
+
 ```bash
 +--------------------+-------------------+------+--------------------+--------------------+-----------------+------------------+--------------------+--------------------+-----------+-------+-----------+----------------+---------+
 |                path|   modificationTime|length|                text|           positions| height_dimension|   width_dimension|             content|               image|total_pages|pagenum|documentnum|      confidence|exception|

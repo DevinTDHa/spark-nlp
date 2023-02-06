@@ -117,16 +117,25 @@ val results = pipeline.transform(pdf_example_df).cache()
 
 ## Example
 
-### Input:
-![Screenshot](../../_examples_ocr/image4.png)
+{%- capture input_image -%}
+![Screenshot](/assets/images/examples_ocr/image4.png)
+{%- endcapture -%}
 
-### Output:
-![Screenshot](../../_examples_ocr/image4_out.png)
+{%- capture output_image -%}
+![Screenshot](/assets/images/examples_ocr/image4_out.png)
+{%- endcapture -%}
+
+
+{% include templates/input_output_image.md
+input_image=input_image
+output_image=output_image
+%}
+
+
+## Output text
 
 ```bash
 Detected text:
- 
-
  
 
  

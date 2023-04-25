@@ -18,7 +18,7 @@ package com.johnsnowlabs.nlp.annotators.audio.feature_extractor
 
 import com.johnsnowlabs.util.JsonParser
 import org.json4s.jackson.JsonMethods
-import org.json4s.{JNothing, JValue}
+import org.json4s.{Formats, JNothing, JValue}
 
 private[johnsnowlabs] case class Preprocessor(
     do_normalize: Boolean = true,
@@ -28,7 +28,10 @@ private[johnsnowlabs] case class Preprocessor(
     return_attention_mask: Boolean,
     sampling_rate: Int)
 
+// TODO add truncate
 private[johnsnowlabs] object Preprocessor {
+  implicit val formats: Formats = org.json4s.DefaultFormats
+
   def apply(
       do_normalize: Boolean = true,
       feature_size: Int,
@@ -51,15 +54,29 @@ private[johnsnowlabs] object Preprocessor {
     def has(childString: String): Boolean = {
       (value \ childString) != JNothing
     }
+    def hasAttributes(attributes: Seq[String]): Boolean =
+      attributes.forall(value.has(_))
   }
 
-  def schemaCheckWav2Vec2(jsonStr: String): Boolean = {
+  def checkSchema(jsonStr: String): Boolean = {
     val json = JsonMethods.parse(jsonStr)
-    val schemaCorrect =
-      if (json.has("do_normalize") && json.has("feature_size") && json.has("padding_side") && json
-          .has("padding_value") && json.has("return_attention_mask") && json.has("sampling_rate"))
-        true
-      else false
+
+    val processorClass = (json \ "processor_class").extractOrElse[String](
+      throw new Exception("\"processor_class\" attribute not found in preprocessor_config.json!"))
+
+    val schemaCorrect = processorClass match {
+      case "Wav2Vec2Processor" =>
+        json.hasAttributes(PreprocessorAttributes.Wave2Vec)
+      case "WhisperProcessor" =>
+        json.hasAttributes(PreprocessorAttributes.Whisper)
+      case _ => false
+    }
+
+//    val schemaCorrect =
+//      if (json.has("do_normalize") && json.has("feature_size") && json.has("padding_side") && json
+//          .has("padding_value") && json.has("return_attention_mask") && json.has("sampling_rate"))
+//        true
+//      else false
 
     schemaCorrect
   }
@@ -67,7 +84,7 @@ private[johnsnowlabs] object Preprocessor {
   def loadPreprocessorConfig(preprocessorConfigJsonContent: String): Preprocessor = {
 
     val preprocessorJsonErrorMsg =
-      s"""The schema of preprocessor_config.json file is incorrect. It should look like this:         
+      s"""The schema of preprocessor_config.json file is incorrect. It should look like this:
          |{
          |  "do_normalize": true,
          |  "feature_size": 1,
@@ -77,9 +94,8 @@ private[johnsnowlabs] object Preprocessor {
          |  "sampling_rate": 16000
          |}
          |""".stripMargin
-    require(
-      Preprocessor.schemaCheckWav2Vec2(preprocessorConfigJsonContent),
-      preprocessorJsonErrorMsg)
+
+    require(Preprocessor.checkSchema(preprocessorConfigJsonContent), preprocessorJsonErrorMsg)
 
     val preprocessorConfig =
       try {

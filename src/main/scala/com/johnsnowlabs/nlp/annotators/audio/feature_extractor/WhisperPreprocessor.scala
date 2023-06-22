@@ -45,23 +45,27 @@ class WhisperPreprocessor(
     samplingRate = sampling_rate)
 
   /** Creates the log-mel spectrogram of given float waveform and transforms it into features for
-   * the Whisper model. We assume, that the input has already been normalized and center zero
-   * padded.
+   * the Whisper model. We assume, that the input has not been preprocessed yet.
    *
    * Adapted from huggingface transformer.
    *
-   * @param waveform
+   * @param rawFloats
    * The waveform to transform into features
    * @return
    * Extracted Features
    */
-  def extractFeatures(waveform: Array[Float]): Array[Array[Float]] = {
+  def extractFeatures(rawFloats: Array[Float]): Array[Array[Float]] = {
 
-    val waveFormVector: DenseVector[Double] = DenseVector(waveform.map(_.toDouble))
+    val waveformVector: DenseVector[Double] = {
+      val truncated = Preprocessor.truncate(rawFloats, n_samples)
+      val padded = Preprocessor.pad(truncated, padding_value, n_samples, padding_side)
+
+      DenseVector(padded.map(_.toDouble))
+    }
 
     // Calculate spectrogram first
-    val logSpectogram: DenseMatrix[Double] = AudioUtils.calculateSpectrogram(
-      waveform = waveFormVector,
+    val logSpectrogram: DenseMatrix[Double] = AudioUtils.calculateSpectrogram(
+      waveform = waveformVector,
       window = window,
       frameLength = n_fft,
       hopLength = hop_length,
@@ -69,7 +73,7 @@ class WhisperPreprocessor(
       melFilters = melFilterBank)
 
     val processedLogSpec: Array[Array[Float]] = {
-      val logSpec = logSpectogram(::, 0 to -2)
+      val logSpec = logSpectrogram(::, 0 to -2)
       val maxes = max(logSpec, max(logSpec) - 8.0)
       val scaled = (maxes + 4.0) / 4.0
 

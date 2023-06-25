@@ -25,52 +25,43 @@ class WhisperForCTCTest extends AnyFlatSpec {
   val preprocessor: WhisperPreprocessor =
     Preprocessor.loadPreprocessorConfig(ppJsonString).asInstanceOf[WhisperPreprocessor]
 
-  behavior of "Whisper"
+  val (localModelPath, _) = modelSanityCheck(modelPath)
 
-  it should "run model" in {
-    val (localModelPath, _) = modelSanityCheck(modelPath)
+  val vocabJsonMap: Map[String, Int] = {
+    val vocabJsonContent = loadJsonStringAsset(localModelPath, "vocab.json")
+    parse(vocabJsonContent, useBigIntForLong = true).values
+      .asInstanceOf[Map[String, BigInt]]
+      .map {
+        case (key, value) if value.isValidInt => (key, value.toInt)
+        case _ => throw new Exception("Could not convert BigInt to Int")
+      }
+  }
 
-    val vocabJsonMap = {
-      val vocabJsonContent = loadJsonStringAsset(localModelPath, "vocab.json")
-      parse(vocabJsonContent, useBigIntForLong = true).values
-        .asInstanceOf[Map[String, BigInt]]
-        .map {
-          case (key, value) if value.isValidInt => (key, value.toInt)
-          case _ => throw new Exception("Could not convert BigInt to Int")
-        }
-    }
+  val merges: Map[(String, String), Int] = loadTextAsset(localModelPath, "merges.txt")
+    .map(_.split(" "))
+    .filter(w => w.length == 2)
+    .map { case Array(c1, c2) => (c1, c2) }
+    .zipWithIndex
+    .toMap
 
-    val merges = loadTextAsset(localModelPath, "merges.txt")
-      .map(_.split(" "))
-      .filter(w => w.length == 2)
-      .map { case Array(c1, c2) => (c1, c2) }
-      .zipWithIndex
-      .toMap
+  // TODO
+  //    val generationConfig =
 
-    // TODO
-    //    val generationConfig =
+  val (wrapper, signatures) =
+    TensorflowWrapper.read(modelPath, zipped = false, useBundle = true, tags = Array("serve"))
 
-    val (wrapper, signatures) =
-      TensorflowWrapper.read(modelPath, zipped = false, useBundle = true, tags = Array("serve"))
+  val tensorResources = new TensorResources()
 
-    print(signatures.get)
+  private val tfSession: Session = wrapper.getTFSessionWithSignature(savedSignatures = signatures)
 
-    //    val whisperModel = new Whisper(
-    //      tensorflow = wrapper,
-    //      configProtoBytes = None,
-    //      signatures = signatures,
-    //      preprocessor,
-    //      merges,
-    //      vocabulary = vocabJsonMap)
-
+  private val inputFeatures: Tensor = {
     val features: Array[Array[Float]] = preprocessor.extractFeatures(rawFloats)
 
     val runner: Session#Runner =
-      wrapper.getTFSessionWithSignature(savedSignatures = signatures).runner
+      tfSession.runner
 
-    val tensorEncoder = new TensorResources()
-
-    val featuresTensors = tensorEncoder.createTensor[Array[Array[Array[Float]]]](Array(features))
+    val featuresTensors =
+      tensorResources.createTensor[Array[Array[Array[Float]]]](Array(features))
 
     val encoderInputOp = "encoder_input_features:0"
     val encoderOutputOp = "StatefulPartitionedCall_1:0"
@@ -82,15 +73,43 @@ class WhisperForCTCTest extends AnyFlatSpec {
       .asScala
       .head
 
+    // TODO: Close this Tensor
+    encoderOutputs
+  }
+
+  val maxLength = 448
+
+  lazy val whisperModel = new Whisper(
+    tensorflow = wrapper,
+    configProtoBytes = None,
+    signatures = signatures,
+    preprocessor,
+    merges,
+    vocabulary = vocabJsonMap)
+
+  behavior of "Whisper"
+
+  it should "run model" in {
+
+    //    val whisperModel = new Whisper(
+    //      tensorflow = wrapper,
+    //      configProtoBytes = None,
+    //      signatures = signatures,
+    //      preprocessor,
+    //      merges,
+    //      vocabulary = vocabJsonMap)
+
+    val encoderOutputs: Tensor = inputFeatures
+
     val encoderOutputsOp = "decoder_encoder_outputs:0"
-    val decoderInputIds = tensorEncoder.createTensor[Array[Array[Int]]](Array(Array(50257)))
+    val decoderInputIds = tensorResources.createTensor[Array[Array[Int]]](Array(Array(50257)))
     val decoderInputIdsOp = "decoder_decoder_input_ids:0"
-    val decoderPositionsIds = tensorEncoder.createTensor[Array[Array[Int]]](Array(Array(0)))
+    val decoderPositionsIds = tensorResources.createTensor[Array[Array[Int]]](Array(Array(0)))
     val decoderPositionsIdsOp = "decoder_decoder_position_ids:0"
     val decoderOutputOp = "StatefulPartitionedCall:0"
 
     val runnerDecoder: Session#Runner =
-      wrapper.getTFSessionWithSignature(savedSignatures = signatures).runner
+      tfSession.runner
 
     // TODO: Only produces the right output with a new runner?
     val decoderOut = runnerDecoder
@@ -101,7 +120,47 @@ class WhisperForCTCTest extends AnyFlatSpec {
       .run()
       .asScala
 
-    print(decoderOut)
+    println(decoderOut)
 
   }
+
+  it should "getModelOutput" in {
+
+    val decoderInputIds = Array(50257)
+
+    val batchDecoderInputIds = Seq(decoderInputIds)
+    val modelOutput: Array[Array[Float]] = whisperModel.getModelOutput(
+      inputFeatures,
+      batchDecoderInputIds,
+      maxLength = maxLength,
+      tfSession)
+
+    println(modelOutput.map(_.mkString("(", ", ", ")")).mkString("(", ", ", ")"))
+  }
+
+  it should "getModelOutput for batch > 1" in {
+
+    val decoderInputIds = Array(50257)
+
+    val batchDecoderInputIds = Seq(decoderInputIds, decoderInputIds)
+
+    val batchFeatureTensor: Tensor = {
+      val rawFloats: Array[Array[Float]] =
+        TensorResources
+          .extractFloats(inputFeatures)
+          .grouped(384)
+          .toArray
+          .grouped(1500)
+          .toArray
+          .head
+      tensorResources.createTensor(Array(rawFloats, rawFloats))
+    }
+
+    val modelOutput: Array[Array[Float]] = whisperModel.getModelOutput(
+      batchFeatureTensor,
+      batchDecoderInputIds,
+      maxLength = maxLength,
+      tfSession)
+  }
+
 }

@@ -36,12 +36,8 @@ class WhisperPreprocessorTest extends AnyFlatSpec {
   }
 
   it should "extract features" taggedAs FastTest in {
-    val waveform =
-      csvread(new File("src/test/resources/audio/csv/librispeech_asr_0_normed.csv")).toArray
-        .map(_.toFloat)
-
     val extractedFeatures: Array[Array[Float]] =
-      preprocessor.extractFeatures(waveform)
+      preprocessor.extractFeatures(rawFloats)
 
     val expectedFeatures: Array[Array[Float]] = matrixToFloatArray(
       csvread(new File("src/test/resources/audio/txt/librispeech_asr_0_features.csv")))

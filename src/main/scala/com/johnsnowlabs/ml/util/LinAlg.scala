@@ -6,14 +6,14 @@ object LinAlg {
 
   object implicits {
 
-    implicit class extendedDenseMatrix(m: DenseMatrix[Double]) {
+    implicit class ExtendedDenseMatrix(m: DenseMatrix[Double]) {
 
       def shape: (Int, Int) = (m.rows, m.cols)
 
       /** Broadcast a DenseMatrix to a target matrix. Uses the same logic as numpy broadcasting.
        *
        * @param targetMatrix
-       * Target matrix
+       * Target matrix with desired shape
        * @return
        * Matrix with the same shape as the target matrix
        */

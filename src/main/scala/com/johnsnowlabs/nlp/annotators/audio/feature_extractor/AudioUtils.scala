@@ -4,7 +4,7 @@ import breeze.linalg._
 import breeze.math.Complex
 import breeze.numerics.{abs, log10, pow}
 import breeze.signal.fourierTr
-import com.johnsnowlabs.ml.util.LinAlg.implicits.extendedDenseMatrix
+import com.johnsnowlabs.ml.util.LinAlg.implicits.ExtendedDenseMatrix
 
 object AudioUtils {
 

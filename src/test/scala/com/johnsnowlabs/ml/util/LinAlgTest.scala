@@ -1,7 +1,7 @@
 package com.johnsnowlabs.ml.util
 
 import breeze.linalg._
-import com.johnsnowlabs.ml.util.LinAlg.implicits.extendedDenseMatrix
+import com.johnsnowlabs.ml.util.LinAlg.implicits.ExtendedDenseMatrix
 import org.scalatest.flatspec.AnyFlatSpec
 class LinAlgTest extends AnyFlatSpec {
 

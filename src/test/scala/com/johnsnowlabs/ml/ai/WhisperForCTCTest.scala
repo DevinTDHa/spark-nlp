@@ -13,7 +13,7 @@ import scala.collection.JavaConverters._
 
 class WhisperForCTCTest extends AnyFlatSpec {
   val modelPath =
-    "/home/ducha/Workspace/JSL/spark-nlp-dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en_sep/"
+    "/home/ducha/spark-nlp/dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en_sepV2/"
 
   val rawFloats: Array[Float] =
     readFile("src/test/resources/audio/txt/librispeech_asr_0.txt").split("\n").map(_.toFloat)
@@ -54,27 +54,10 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   private val tfSession: Session = wrapper.getTFSessionWithSignature(savedSignatures = signatures)
 
-  private val inputFeatures: Tensor = {
+  private val encodedFeatures: Tensor = {
     val features: Array[Array[Float]] = preprocessor.extractFeatures(rawFloats)
 
-    val runner: Session#Runner =
-      tfSession.runner
-
-    val featuresTensors =
-      tensorResources.createTensor[Array[Array[Array[Float]]]](Array(features))
-
-    val encoderInputOp = "encoder_input_features:0"
-    val encoderOutputOp = "StatefulPartitionedCall_1:0"
-
-    val encoderOutputs: Tensor = runner
-      .feed(encoderInputOp, featuresTensors)
-      .fetch(encoderOutputOp)
-      .run()
-      .asScala
-      .head
-
-    // TODO: Close this Tensor
-    encoderOutputs
+    whisperModel.encode(Array(features), tfSession)
   }
 
   val maxLength = 448
@@ -89,6 +72,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   behavior of "Whisper"
 
+  private val startToken: Int = whisperModel.bosTokenId
   it should "run model" in {
 
     //    val whisperModel = new Whisper(
@@ -99,10 +83,11 @@ class WhisperForCTCTest extends AnyFlatSpec {
     //      merges,
     //      vocabulary = vocabJsonMap)
 
-    val encoderOutputs: Tensor = inputFeatures
+    val encoderOutputs: Tensor = encodedFeatures
 
     val encoderOutputsOp = "decoder_encoder_outputs:0"
-    val decoderInputIds = tensorResources.createTensor[Array[Array[Int]]](Array(Array(50257)))
+    val decoderInputIds =
+      tensorResources.createTensor[Array[Array[Int]]](Array(Array(startToken)))
     val decoderInputIdsOp = "decoder_decoder_input_ids:0"
     val decoderPositionsIds = tensorResources.createTensor[Array[Array[Int]]](Array(Array(0)))
     val decoderPositionsIdsOp = "decoder_decoder_position_ids:0"
@@ -126,11 +111,11 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   it should "getModelOutput" in {
 
-    val decoderInputIds = Array(50257)
+    val decoderInputIds = Array(startToken)
 
     val batchDecoderInputIds = Seq(decoderInputIds)
     val modelOutput: Array[Array[Float]] = whisperModel.getModelOutput(
-      inputFeatures,
+      encodedFeatures,
       batchDecoderInputIds,
       maxLength = maxLength,
       tfSession)
@@ -140,14 +125,14 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   it should "getModelOutput for batch > 1" in {
 
-    val decoderInputIds = Array(50257)
+    val decoderInputIds = Array(startToken)
 
     val batchDecoderInputIds = Seq(decoderInputIds, decoderInputIds)
 
     val batchFeatureTensor: Tensor = {
       val rawFloats: Array[Array[Float]] =
         TensorResources
-          .extractFloats(inputFeatures)
+          .extractFloats(encodedFeatures)
           .grouped(384)
           .toArray
           .grouped(1500)
@@ -161,6 +146,69 @@ class WhisperForCTCTest extends AnyFlatSpec {
       batchDecoderInputIds,
       maxLength = maxLength,
       tfSession)
+  }
+
+  it should "continuously get output" in {
+
+    val decoderInputIds = Array(startToken)
+
+    val batchDecoderInputIds: Seq[Array[Int]] = Seq(decoderInputIds)
+
+    def callModel(in: Seq[Array[Int]]): Array[Float] = {
+      val output = whisperModel
+        .getModelOutput(encodedFeatures, in, maxLength = maxLength, tfSession)
+
+      require(output.length == 1, s"Shape of output is wrong (Batch size: ${output.length}).")
+      output.head
+    }
+
+    def argmax(x: Array[Float]): Int =
+      x.zipWithIndex.maxBy { case (out, _) =>
+        out
+      }._2
+
+    var nextDecoderInputIds: Seq[Array[Int]] = batchDecoderInputIds
+
+    (0 to 30).foreach { _ =>
+      val currentOutput = callModel(nextDecoderInputIds)
+      val nextTokenId = argmax(currentOutput)
+
+      val appendedInputBatch = Seq(nextDecoderInputIds.head ++ Array(nextTokenId))
+      nextDecoderInputIds = appendedInputBatch
+    }
+
+    println(nextDecoderInputIds)
+    val sentence: Array[Int] =
+      nextDecoderInputIds.head.slice(2, nextDecoderInputIds.head.length)
+
+    println(whisperModel.bpeTokenizer.decodeTokens(sentence))
+  }
+
+  it should "generate" in {
+    val batchDecoderInputIds: Array[Array[Int]] = Array({
+      val decoderInputIds = Array(startToken)
+      decoderInputIds
+    })
+
+    val generatedIds = whisperModel.generate(
+      decoderEncoderStateTensors = encodedFeatures,
+      decoderInputIds = batchDecoderInputIds,
+      maxOutputLength = maxLength,
+      minOutputLength = 0,
+      doSample = false,
+      beamSize = 1,
+      numReturnSequences = 10,
+      temperature = 0.0,
+      topK = 1,
+      topP = 1.0,
+      repetitionPenalty = 0.0,
+      noRepeatNgramSize = 0,
+      randomSeed = None,
+      ignoreTokenIds = Array.empty[Int],
+      session = tfSession)
+
+    println(generatedIds.mkString("Array(", ", ", ")"))
+
   }
 
 }

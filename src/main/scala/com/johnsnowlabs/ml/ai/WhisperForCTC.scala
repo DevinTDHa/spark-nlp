@@ -20,7 +20,7 @@ import com.johnsnowlabs.ml.ai.util.Generation.Generate
 import com.johnsnowlabs.ml.tensorflow.sign.{ModelSignatureConstants, ModelSignatureManager}
 import com.johnsnowlabs.ml.tensorflow.{TensorResources, TensorflowWrapper}
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.WhisperPreprocessor
-import com.johnsnowlabs.nlp.annotators.tokenizer.bpe.{BpeTokenizer, Gpt2Tokenizer}
+import com.johnsnowlabs.nlp.annotators.tokenizer.bpe.{BpeTokenizer, Gpt2Tokenizer, SpecialTokens, WhisperTokenizer}
 import com.johnsnowlabs.nlp.{Annotation, AnnotationAudio, AnnotatorType}
 import org.tensorflow.{Session, Tensor}
 
@@ -36,19 +36,33 @@ import scala.collection.JavaConverters._
  * Configuration for TensorFlow session
  */
 
-private[johnsnowlabs] class Whisper(
-                                     val tensorflow: TensorflowWrapper,
-                                     configProtoBytes: Option[Array[Byte]] = None,
-                                     signatures: Option[Map[String, String]] = None,
-                                     preprocessor: WhisperPreprocessor,
-                                     merges: Map[(String, String), Int],
-                                     vocabulary: Map[String, Int])
+private[johnsnowlabs] class WhisperForCTC(
+                                           val tensorflow: TensorflowWrapper,
+                                           configProtoBytes: Option[Array[Byte]] = None,
+                                           signatures: Option[Map[String, String]] = None,
+                                           preprocessor: WhisperPreprocessor,
+                                           merges: Map[(String, String), Int],
+                                           vocabulary: Map[String, Int],
+                                           addedSpecialTokens: Map[String, Int] = Map.empty)
   extends Serializable
     with Generate {
 
+  private val eosToken = "<|endoftext|>" // TODO: Get form config
   val bpeTokenizer: Gpt2Tokenizer = BpeTokenizer
-    .forModel("gpt2", merges = merges, vocab = vocabulary)
-    .asInstanceOf[Gpt2Tokenizer]
+    .forModel(
+      "whisper",
+      merges = merges,
+      vocab = vocabulary,
+      specialTokens = Some(
+        new SpecialTokens(
+          vocabulary,
+          startTokenString = "<|startoftranscript|>", // TODO get from config
+          endTokenString = eosToken,
+          unkTokenString = eosToken,
+          maskTokenString = eosToken,
+          padTokenString = eosToken,
+          additionalStrings = addedSpecialTokens.keys.toArray)))
+    .asInstanceOf[WhisperTokenizer]
 
   private val _tfWhisperSignatures: Map[String, String] =
     signatures.getOrElse(ModelSignatureManager.apply())
@@ -57,7 +71,7 @@ private[johnsnowlabs] class Whisper(
   val bosTokenId = 50257
   val paddingTokenId = 50256
   val eosTokenId = 50256
-  val vocabSize = 51864 // vocabulary.length?
+  val vocabSize = 51864 // TODO: != vocabulary.length Discrepancy? 1607 Missing?
 
   var tensorResources = new TensorResources()
 
@@ -428,26 +442,27 @@ private[johnsnowlabs] class Whisper(
     val dummyEncoderAttentionMaskTensors: Tensor = null // not needed
 
     super.generate(
-      dummyEncoderInput,
-      decoderEncoderStateTensors,
-      dummyEncoderAttentionMaskTensors,
-      decoderInputIds,
-      maxOutputLength,
-      minOutputLength,
-      doSample,
-      beamSize,
-      numReturnSequences,
-      temperature,
-      topK,
-      topP,
-      repetitionPenalty,
-      noRepeatNgramSize,
-      vocabSize,
-      eosTokenId,
-      paddingTokenId,
-      randomSeed,
-      ignoreTokenIds,
-      session)
+      inputIds = dummyEncoderInput,
+      decoderEncoderStateTensors = decoderEncoderStateTensors,
+      encoderAttentionMaskTensors = dummyEncoderAttentionMaskTensors,
+      decoderInputs = decoderInputIds,
+      maxOutputLength = maxOutputLength,
+      minOutputLength = minOutputLength,
+      doSample = doSample,
+      beamSize = beamSize,
+      numReturnSequences = numReturnSequences,
+      temperature = temperature,
+      topK = topK,
+      topP = topP,
+      repetitionPenalty = repetitionPenalty,
+      noRepeatNgramSize = noRepeatNgramSize,
+      vocabSize = vocabSize,
+      eosTokenId = eosTokenId,
+      paddingTokenId = paddingTokenId,
+      randomSeed = randomSeed,
+      ignoreTokenIds = ignoreTokenIds,
+      session = session,
+      applySoftmax = false)
   }
 
   private def sessionWarmup(): Unit = {

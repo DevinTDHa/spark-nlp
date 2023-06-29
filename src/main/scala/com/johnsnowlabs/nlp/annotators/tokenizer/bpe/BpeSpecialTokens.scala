@@ -16,14 +16,14 @@
 
 package com.johnsnowlabs.nlp.annotators.tokenizer.bpe
 
-private[nlp] class SpecialTokens(
-    vocab: Map[String, Int],
-    startTokenString: String,
-    endTokenString: String,
-    unkTokenString: String,
-    maskTokenString: String,
-    padTokenString: String,
-    additionalStrings: Array[String] = Array()) {
+private[johnsnowlabs] class SpecialTokens(
+                                           vocab: Map[String, Int],
+                                           startTokenString: String,
+                                           endTokenString: String,
+                                           unkTokenString: String,
+                                           maskTokenString: String,
+                                           padTokenString: String,
+                                           additionalStrings: Array[String] = Array()) {
   val allTokenStrings: Array[String] = Array(
     maskTokenString,
     startTokenString,

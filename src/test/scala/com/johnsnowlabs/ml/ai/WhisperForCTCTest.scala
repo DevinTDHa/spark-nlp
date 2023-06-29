@@ -27,7 +27,20 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   val (localModelPath, _) = modelSanityCheck(modelPath)
 
-  val vocabJsonMap: Map[String, Int] = {
+  val addedTokens: Map[String, Int] =
+    try {
+      parse(loadJsonStringAsset(localModelPath, "added_tokens.json")).values
+        .asInstanceOf[Map[String, BigInt]]
+        .map {
+          case (key, value) if value.isValidInt => (key, value.toInt)
+          case _ => throw new IllegalArgumentException("Could not convert BigInt to Int")
+        }
+    } catch {
+      case _: IllegalArgumentException =>
+        Map.empty
+    }
+
+  val vocabMap: Map[String, Int] = {
     val vocabJsonContent = loadJsonStringAsset(localModelPath, "vocab.json")
     parse(vocabJsonContent, useBigIntForLong = true).values
       .asInstanceOf[Map[String, BigInt]]
@@ -35,7 +48,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
         case (key, value) if value.isValidInt => (key, value.toInt)
         case _ => throw new Exception("Could not convert BigInt to Int")
       }
-  }
+  } ++ addedTokens
 
   val merges: Map[(String, String), Int] = loadTextAsset(localModelPath, "merges.txt")
     .map(_.split(" "))
@@ -44,9 +57,15 @@ class WhisperForCTCTest extends AnyFlatSpec {
     .zipWithIndex
     .toMap
 
-  // TODO
-  //    val generationConfig =
+  val modelConfig: Map[String, Any] =
+    parse(loadJsonStringAsset(localModelPath, "config.json")).values
+      .asInstanceOf[Map[String, Any]]
 
+  // TODO Should be moved to processor?
+  val generationConfig: Map[String, Any] = {
+    val configString = loadJsonStringAsset(localModelPath, "generation_config.json")
+    parse(configString).values.asInstanceOf[Map[String, Any]]
+  }
   val (wrapper, signatures) =
     TensorflowWrapper.read(modelPath, zipped = false, useBundle = true, tags = Array("serve"))
 
@@ -62,26 +81,18 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   val maxLength = 448
 
-  lazy val whisperModel = new Whisper(
+  lazy val whisperModel = new WhisperForCTC(
     tensorflow = wrapper,
     configProtoBytes = None,
     signatures = signatures,
     preprocessor,
     merges,
-    vocabulary = vocabJsonMap)
+    vocabulary = vocabMap)
 
   behavior of "Whisper"
 
   private val startToken: Int = whisperModel.bosTokenId
   it should "run model" in {
-
-    //    val whisperModel = new Whisper(
-    //      tensorflow = wrapper,
-    //      configProtoBytes = None,
-    //      signatures = signatures,
-    //      preprocessor,
-    //      merges,
-    //      vocabulary = vocabJsonMap)
 
     val encoderOutputs: Tensor = encodedFeatures
 
@@ -96,7 +107,6 @@ class WhisperForCTCTest extends AnyFlatSpec {
     val runnerDecoder: Session#Runner =
       tfSession.runner
 
-    // TODO: Only produces the right output with a new runner?
     val decoderOut = runnerDecoder
       .feed(decoderInputIdsOp, decoderInputIds)
       .feed(encoderOutputsOp, encoderOutputs)
@@ -106,6 +116,12 @@ class WhisperForCTCTest extends AnyFlatSpec {
       .asScala
 
     println(decoderOut)
+
+  }
+
+  it should "construct correct vocabSize" in {
+    1 + 2
+    println(whisperModel)
 
   }
 
@@ -190,24 +206,32 @@ class WhisperForCTCTest extends AnyFlatSpec {
       decoderInputIds
     })
 
-    val generatedIds = whisperModel.generate(
-      decoderEncoderStateTensors = encodedFeatures,
-      decoderInputIds = batchDecoderInputIds,
-      maxOutputLength = maxLength,
-      minOutputLength = 0,
-      doSample = false,
-      beamSize = 1,
-      numReturnSequences = 10,
-      temperature = 0.0,
-      topK = 1,
-      topP = 1.0,
-      repetitionPenalty = 0.0,
-      noRepeatNgramSize = 0,
-      randomSeed = None,
-      ignoreTokenIds = Array.empty[Int],
-      session = tfSession)
+    val suppressTokenIds = generationConfig.get("suppress_tokens") match {
+      case Some(value: List[BigInt]) => value.toArray.map(_.toInt)
+      case _ => throw new Exception("Invalid format for suppress_tokens")
+    }
 
-    println(generatedIds.mkString("Array(", ", ", ")"))
+    val generatedIds = whisperModel
+      .generate(
+        decoderEncoderStateTensors = encodedFeatures,
+        decoderInputIds = batchDecoderInputIds,
+        maxOutputLength = maxLength,
+        minOutputLength = 0,
+        doSample = false,
+        beamSize = 2, // 1 for greedy search
+        numReturnSequences = 2, // 1 for greedy search
+        temperature = 1.0,
+        topK = 5, // 1 for greedy search
+        topP = 1.0,
+        repetitionPenalty = 1.0,
+        noRepeatNgramSize = 0,
+        randomSeed = None,
+        ignoreTokenIds = suppressTokenIds,
+        session = tfSession)
+
+    println(generatedIds.head.mkString("Array(", ", ", ")"))
+
+    whisperModel.decode(generatedIds).foreach(println)
 
   }
 

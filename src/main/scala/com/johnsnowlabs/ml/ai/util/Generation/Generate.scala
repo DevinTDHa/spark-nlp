@@ -15,91 +15,85 @@
  */
 
 package com.johnsnowlabs.ml.ai.util.Generation
-import com.johnsnowlabs.ml.ai.util.Generation.Search.BeamScorer
+
+import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitProcess.{MinLengthLogitProcessor, NoRepeatNgramsLogitProcessor, RepetitionPenaltyLogitProcessor}
+import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitProcessorList
+import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitWarper.{TemperatureLogitWarper, TopKLogitWarper, TopPLogitWarper}
+import com.johnsnowlabs.ml.ai.util.Generation.Search.{BeamScorer, BeamSearchScorer}
+import org.tensorflow.{Session, Tensor}
+
 import scala.math._
 import scala.util.control.Breaks._
-import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitProcess.{
-  MinLengthLogitProcessor,
-  NoRepeatNgramsLogitProcessor,
-  RepetitionPenaltyLogitProcessor
-}
-import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitProcessorList
-import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitWarper.{
-  TemperatureLogitWarper,
-  TopKLogitWarper,
-  TopPLogitWarper
-}
-
-import com.johnsnowlabs.ml.ai.util.Generation.Search.BeamSearchScorer
-import org.tensorflow.{Session, Tensor}
 
 trait Generate {
 
   /** Text Generation using Beam Search
-    * @param inputIds
-    *   input ids
-    * @param decoderEncoderStateTensors
-    *   decoder encoder state tensors
-    * @param encoderAttentionMaskTensors
-    *   encoder attention mask tensors
-    * @param decoderInputs
-    *   decoder inputs
-    * @param maxOutputLength
-    *   max output length
-    * @param minOutputLength
-    *   min output length
-    * @param doSample
-    *   do sample
-    * @param beamSize
-    *   beam size
-    * @param numReturnSequences
-    *   num return sequences
-    * @param temperature
-    *   temperature
-    * @param topK
-    *   top K
-    * @param topP
-    *   top P
-    * @param repetitionPenalty
-    *   repetition penalty
-    * @param noRepeatNgramSize
-    *   no repeat ngram size
-    * @param vocabSize
-    *   vocab size
-    * @param eosTokenId
-    *   eos token id
-    * @param paddingTokenId
-    *   padding token id
-    * @param randomSeed
-    *   random seed
-    * @param ignoreTokenIds
-    *   ignore token ids
-    * @param session
-    *   session
-    * @return
-    *   Array of generated sequences
-    */
+   *
+   * @param inputIds
+   * input ids
+   * @param decoderEncoderStateTensors
+   * decoder encoder state tensors
+   * @param encoderAttentionMaskTensors
+   * encoder attention mask tensors
+   * @param decoderInputs
+   * decoder inputs
+   * @param maxOutputLength
+   * max output length
+   * @param minOutputLength
+   * min output length
+   * @param doSample
+   * do sample
+   * @param beamSize
+   * beam size
+   * @param numReturnSequences
+   * num return sequences
+   * @param temperature
+   * temperature
+   * @param topK
+   * top K
+   * @param topP
+   * top P
+   * @param repetitionPenalty
+   * repetition penalty
+   * @param noRepeatNgramSize
+   * no repeat ngram size
+   * @param vocabSize
+   * vocab size
+   * @param eosTokenId
+   * eos token id
+   * @param paddingTokenId
+   * padding token id
+   * @param randomSeed
+   * random seed
+   * @param ignoreTokenIds
+   * ignore token ids
+   * @param session
+   * session
+   * @return
+   * Array of generated sequences
+   */
   def generate(
-      inputIds: Seq[Array[Int]],
-      decoderEncoderStateTensors: Tensor,
-      encoderAttentionMaskTensors: Tensor,
-      decoderInputs: Array[Array[Int]],
-      maxOutputLength: Int,
-      minOutputLength: Int,
-      doSample: Boolean,
-      beamSize: Int,
-      numReturnSequences: Int,
-      temperature: Double,
-      topK: Int,
-      topP: Double,
-      repetitionPenalty: Double,
-      noRepeatNgramSize: Int,
-      vocabSize: Int,
-      eosTokenId: Int,
-      paddingTokenId: Int,
-      randomSeed: Option[Long],
-      ignoreTokenIds: Array[Int] = Array(),
-      session: Session): Array[Array[Int]] = {
+                inputIds: Seq[Array[Int]],
+                decoderEncoderStateTensors: Tensor,
+                encoderAttentionMaskTensors: Tensor,
+                decoderInputs: Array[Array[Int]],
+                maxOutputLength: Int,
+                minOutputLength: Int,
+                doSample: Boolean,
+                beamSize: Int,
+                numReturnSequences: Int,
+                temperature: Double,
+                topK: Int,
+                topP: Double,
+                repetitionPenalty: Double,
+                noRepeatNgramSize: Int,
+                vocabSize: Int,
+                eosTokenId: Int,
+                paddingTokenId: Int,
+                randomSeed: Option[Long],
+                ignoreTokenIds: Array[Int] = Array(),
+                session: Session,
+                applySoftmax: Boolean = true): Array[Array[Int]] = {
 
     // TODO: Add support for ignoreTokenIds
 
@@ -141,50 +135,53 @@ trait Generate {
       eosTokenId,
       doSample,
       randomSeed,
-      session)
+      session,
+      applySoftmax)
   }
 
   /** Beam Search for text generation
-    * @param encoderInputIdsVals
-    *   encoder input ids vals
-    * @param inputIdsVal
-    *   input ids val
-    * @param decoderEncoderStateTensors
-    *   decoder encoder state tensors
-    * @param encoderAttentionMaskTensors
-    *   encoder attention mask tensors
-    * @param beamScorer
-    *   beam scorer
-    * @param logitProcessor
-    *   logit processor
-    * @param maxLength
-    *   max length
-    * @param padTokenId
-    *   pad token id
-    * @param eosTokenId
-    *   eos token id
-    * @param doSample
-    *   do sample
-    * @param randomSeed
-    *   random seed
-    * @param session
-    *   session
-    * @return
-    */
+   *
+   * @param encoderInputIdsVals
+   * encoder input ids vals
+   * @param inputIdsVal
+   * input ids val
+   * @param decoderEncoderStateTensors
+   * decoder encoder state tensors
+   * @param encoderAttentionMaskTensors
+   * encoder attention mask tensors
+   * @param beamScorer
+   * beam scorer
+   * @param logitProcessor
+   * logit processor
+   * @param maxLength
+   * max length
+   * @param padTokenId
+   * pad token id
+   * @param eosTokenId
+   * eos token id
+   * @param doSample
+   * do sample
+   * @param randomSeed
+   * random seed
+   * @param session
+   * session
+   * @return
+   */
   def beamSearch(
-      encoderInputIdsVals: Seq[Array[Int]],
-      inputIdsVal: Seq[Array[Int]],
-      decoderEncoderStateTensors: Tensor,
-      encoderAttentionMaskTensors: Tensor,
-      beamScorer: BeamScorer,
-      logitProcessor: LogitProcessorList,
-      maxLength: Int,
-      padTokenId: Int,
-      eosTokenId: Int,
-      doSample: Boolean,
-      randomSeed: Option[Long],
-      session: Session): Array[Array[Int]] = {
-    var inputIds = inputIdsVal
+                  encoderInputIdsVals: Seq[Array[Int]],
+                  inputIdsVal: Seq[Array[Int]],
+                  decoderEncoderStateTensors: Tensor,
+                  encoderAttentionMaskTensors: Tensor,
+                  beamScorer: BeamScorer,
+                  logitProcessor: LogitProcessorList,
+                  maxLength: Int,
+                  padTokenId: Int,
+                  eosTokenId: Int,
+                  doSample: Boolean,
+                  randomSeed: Option[Long],
+                  session: Session,
+                  applySoftmax: Boolean): Array[Array[Int]] = {
+    val inputIds = inputIdsVal
     val batchSize = beamScorer.getBeamHypothesesSeq.length
     val numBeams = beamScorer.getNumBeams
     val batchBeamSize = batchSize * numBeams
@@ -205,16 +202,17 @@ trait Generate {
         // Feed the encoder input ids and decoder input ids to the model and get the output
         // return shape (beamSize,vocabSize)
         val nextTokenLogits =
-          this.getModelOutput(
-            expandedEncoderInputIdsVals,
-            expandedInputs,
-            decoderEncoderStateTensors,
-            encoderAttentionMaskTensors,
-            maxLength,
-            session)
+        this.getModelOutput(
+          expandedEncoderInputIdsVals,
+          expandedInputs,
+          decoderEncoderStateTensors,
+          encoderAttentionMaskTensors,
+          maxLength,
+          session)
 
-        // Apply log softmax to model outputs
-        var nextTokenScores = nextTokenLogits.map(logSoftmax)
+        // Optionally Apply log softmax to model outputs
+        var nextTokenScores =
+          if (applySoftmax) nextTokenLogits.map(logSoftmax) else nextTokenLogits
 
         // Process the logits by defined logit processors
         val nextTokenScoresProcessed =

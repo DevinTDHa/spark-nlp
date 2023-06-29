@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import java.io.File
 
-class WhisperPreprocessorTest extends AnyFlatSpec {
+class WhisperForCTCPreprocessorTest extends AnyFlatSpec {
 
   val modelPath =
     "/home/ducha/Workspace/JSL/spark-nlp-dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en/saved_model/1/"

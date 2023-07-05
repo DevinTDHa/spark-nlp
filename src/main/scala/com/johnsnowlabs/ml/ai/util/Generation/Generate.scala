@@ -28,72 +28,72 @@ import scala.util.control.Breaks._
 trait Generate {
 
   /** Text Generation using Beam Search
-   *
-   * @param inputIds
-   * input ids
-   * @param decoderEncoderStateTensors
-   * decoder encoder state tensors
-   * @param encoderAttentionMaskTensors
-   * encoder attention mask tensors
-   * @param decoderInputs
-   * decoder inputs
-   * @param maxOutputLength
-   * max output length
-   * @param minOutputLength
-   * min output length
-   * @param doSample
-   * do sample
-   * @param beamSize
-   * beam size
-   * @param numReturnSequences
-   * num return sequences
-   * @param temperature
-   * temperature
-   * @param topK
-   * top K
-   * @param topP
-   * top P
-   * @param repetitionPenalty
-   * repetition penalty
-   * @param noRepeatNgramSize
-   * no repeat ngram size
-   * @param vocabSize
-   * vocab size
-   * @param eosTokenId
-   * eos token id
-   * @param paddingTokenId
-   * padding token id
-   * @param randomSeed
-   * random seed
-   * @param ignoreTokenIds
-   * ignore token ids
-   * @param session
-   * session
-   * @return
-   * Array of generated sequences
-   */
+    *
+    * @param inputIds
+    *   input ids
+    * @param decoderEncoderStateTensors
+    *   decoder encoder state tensors
+    * @param encoderAttentionMaskTensors
+    *   encoder attention mask tensors
+    * @param decoderInputs
+    *   decoder inputs
+    * @param maxOutputLength
+    *   max output length
+    * @param minOutputLength
+    *   min output length
+    * @param doSample
+    *   do sample
+    * @param beamSize
+    *   beam size
+    * @param numReturnSequences
+    *   num return sequences
+    * @param temperature
+    *   temperature
+    * @param topK
+    *   top K
+    * @param topP
+    *   top P
+    * @param repetitionPenalty
+    *   repetition penalty
+    * @param noRepeatNgramSize
+    *   no repeat ngram size
+    * @param vocabSize
+    *   vocab size
+    * @param eosTokenId
+    *   eos token id
+    * @param paddingTokenId
+    *   padding token id
+    * @param randomSeed
+    *   random seed
+    * @param ignoreTokenIds
+    *   ignore token ids
+    * @param session
+    *   session
+    * @return
+    *   Array of generated sequences
+    */
   def generate(
-                inputIds: Seq[Array[Int]],
-                decoderEncoderStateTensors: Tensor,
-                encoderAttentionMaskTensors: Tensor,
-                decoderInputs: Array[Array[Int]],
-                maxOutputLength: Int,
-                minOutputLength: Int,
-                doSample: Boolean,
-                beamSize: Int,
-                numReturnSequences: Int,
-                temperature: Double,
-                topK: Int,
-                topP: Double,
-                repetitionPenalty: Double,
-                noRepeatNgramSize: Int,
-                vocabSize: Int,
-                eosTokenId: Int,
-                paddingTokenId: Int,
-                randomSeed: Option[Long],
-                ignoreTokenIds: Array[Int] = Array(),
-                session: Session,
-                applySoftmax: Boolean = true): Array[Array[Int]] = {
+      inputIds: Seq[Array[Int]],
+      decoderEncoderStateTensors: Tensor,
+      encoderAttentionMaskTensors: Tensor,
+      decoderInputs: Array[Array[Int]],
+      maxOutputLength: Int,
+      minOutputLength: Int,
+      doSample: Boolean,
+      beamSize: Int,
+      numReturnSequences: Int,
+      temperature: Double,
+      topK: Int,
+      topP: Double,
+      repetitionPenalty: Double,
+      noRepeatNgramSize: Int,
+      vocabSize: Int,
+      eosTokenId: Int,
+      paddingTokenId: Int,
+      randomSeed: Option[Long],
+      ignoreTokenIds: Array[Int] = Array(),
+      session: Session,
+      applySoftmax: Boolean = true): Array[Array[Int]] = {
 
     // TODO: Add support for ignoreTokenIds
 
@@ -140,47 +140,47 @@ trait Generate {
   }
 
   /** Beam Search for text generation
-   *
-   * @param encoderInputIdsVals
-   * encoder input ids vals
-   * @param inputIdsVal
-   * input ids val
-   * @param decoderEncoderStateTensors
-   * decoder encoder state tensors
-   * @param encoderAttentionMaskTensors
-   * encoder attention mask tensors
-   * @param beamScorer
-   * beam scorer
-   * @param logitProcessor
-   * logit processor
-   * @param maxLength
-   * max length
-   * @param padTokenId
-   * pad token id
-   * @param eosTokenId
-   * eos token id
-   * @param doSample
-   * do sample
-   * @param randomSeed
-   * random seed
-   * @param session
-   * session
-   * @return
-   */
+    *
+    * @param encoderInputIdsVals
+    *   encoder input ids vals
+    * @param inputIdsVal
+    *   input ids val
+    * @param decoderEncoderStateTensors
+    *   decoder encoder state tensors
+    * @param encoderAttentionMaskTensors
+    *   encoder attention mask tensors
+    * @param beamScorer
+    *   beam scorer
+    * @param logitProcessor
+    *   logit processor
+    * @param maxLength
+    *   max length
+    * @param padTokenId
+    *   pad token id
+    * @param eosTokenId
+    *   eos token id
+    * @param doSample
+    *   do sample
+    * @param randomSeed
+    *   random seed
+    * @param session
+    *   session
+    * @return
+    */
   def beamSearch(
-                  encoderInputIdsVals: Seq[Array[Int]],
-                  inputIdsVal: Seq[Array[Int]],
-                  decoderEncoderStateTensors: Tensor,
-                  encoderAttentionMaskTensors: Tensor,
-                  beamScorer: BeamScorer,
-                  logitProcessor: LogitProcessorList,
-                  maxLength: Int,
-                  padTokenId: Int,
-                  eosTokenId: Int,
-                  doSample: Boolean,
-                  randomSeed: Option[Long],
-                  session: Session,
-                  applySoftmax: Boolean): Array[Array[Int]] = {
+      encoderInputIdsVals: Seq[Array[Int]],
+      inputIdsVal: Seq[Array[Int]],
+      decoderEncoderStateTensors: Tensor,
+      encoderAttentionMaskTensors: Tensor,
+      beamScorer: BeamScorer,
+      logitProcessor: LogitProcessorList,
+      maxLength: Int,
+      padTokenId: Int,
+      eosTokenId: Int,
+      doSample: Boolean,
+      randomSeed: Option[Long],
+      session: Session,
+      applySoftmax: Boolean): Array[Array[Int]] = {
     val inputIds = inputIdsVal
     val batchSize = beamScorer.getBeamHypothesesSeq.length
     val numBeams = beamScorer.getNumBeams
@@ -202,13 +202,13 @@ trait Generate {
         // Feed the encoder input ids and decoder input ids to the model and get the output
         // return shape (beamSize,vocabSize)
         val nextTokenLogits =
-        this.getModelOutput(
-          expandedEncoderInputIdsVals,
-          expandedInputs,
-          decoderEncoderStateTensors,
-          encoderAttentionMaskTensors,
-          maxLength,
-          session)
+          this.getModelOutput(
+            expandedEncoderInputIdsVals,
+            expandedInputs,
+            decoderEncoderStateTensors,
+            encoderAttentionMaskTensors,
+            maxLength,
+            session)
 
         // Optionally Apply log softmax to model outputs
         var nextTokenScores =
@@ -398,6 +398,23 @@ trait Generate {
     selectedIndices
   }
 
+  /** Calls the model and returns the output logits.
+    *
+    * @param encoderInputIds
+    *   Input IDs for the Encoder
+    * @param decoderInputIds
+    *   Input IDs for the Decoder
+    * @param decoderEncoderStateTensors
+    *   Tensor of encoded input for the decoder
+    * @param encoderAttentionMaskTensors
+    *   Tensor for encoder attention mask
+    * @param maxLength
+    *   Max length of the input
+    * @param session
+    *   Tensorflow Session
+    * @return
+    *   Logits for the input
+    */
   def getModelOutput(
       encoderInputIds: Seq[Array[Int]],
       decoderInputIds: Seq[Array[Int]],
@@ -454,4 +471,96 @@ trait Generate {
     cdf
   }
 
+  /** Gets the index with the highest score
+    *
+    * @param scores
+    *   Array of Scores to max
+    * @return
+    *   Index of the highest score
+    */
+  def argmax(scores: Array[Float]): Int =
+    scores.zipWithIndex.maxBy { case (score, _) =>
+      score
+    }._2
+
+  /** Generates a Sequence of tokens with a greedy strategy.
+    *
+    * The token with the highest score will always be chosen.
+    *
+    * @param decoderEncoderStateTensors
+    *   Tensor of encoded input for the decoder
+    * @param encoderAttentionMaskTensors
+    *   Tensor for encoder attention mask
+    * @param decoderInputs
+    *   Input IDs for the decoder
+    * @param maxOutputLength
+    *   Max length of the generated sequence
+    * @param minOutputLength
+    *   Min length of the generated sequence
+    * @param vocabSize
+    *   Size of the vocabulary of the tokenizer
+    * @param eosTokenId
+    *   End-Of-Speech token id
+    * @param paddingTokenId
+    *   Padding token id
+    * @param ignoreTokenIds
+    *   Token IDs to ignore
+    * @param applySoftmax
+    *   Whether to apply softmax activation on the logits
+    * @param logitProcessor
+    *   Optional logit processors
+    * @param session
+    *   Tensorflow session
+    * @return
+    */
+  def generateGreedy(
+      encoderInputIds: Seq[Array[Int]],
+      decoderEncoderStateTensors: Tensor,
+      encoderAttentionMaskTensors: Tensor,
+      decoderInputs: Seq[Array[Int]],
+      maxOutputLength: Int,
+      minOutputLength: Int,
+      vocabSize: Int,
+      eosTokenId: Int,
+      paddingTokenId: Int,
+      ignoreTokenIds: Array[Int] = Array(),
+      applySoftmax: Boolean = true,
+      logitProcessor: Option[LogitProcessorList],
+      session: Session): Array[Array[Int]] = {
+
+    def generationFinished(decoderIds: Seq[Array[Int]]): Boolean =
+      decoderIds.map(_.last).forall(_ == eosTokenId) || decoderIds.head.length == maxOutputLength
+
+    var generatedIds: Seq[Array[Int]] = decoderInputs
+
+    while (!generationFinished(generatedIds)) {
+      val currentOutput: Array[Array[Float]] = getModelOutput(
+        encoderInputIds,
+        generatedIds,
+        decoderEncoderStateTensors,
+        encoderAttentionMaskTensors,
+        maxOutputLength,
+        session)
+
+      val logits: Array[Array[Float]] =
+        if (applySoftmax) currentOutput.map(softmax) else currentOutput
+
+      val processedLogits = logitProcessor match {
+        case Some(processor) =>
+          processor.process(
+            inputIds = generatedIds,
+            scores = logits,
+            currentLength = generatedIds.head.length)
+        case None => logits
+      }
+      val nextTokenIds: Array[Int] = processedLogits.map(argmax)
+
+      generatedIds =
+        generatedIds.zip(nextTokenIds).map { case (currentIds: Array[Int], nextId: Int) =>
+          currentIds ++ Array(nextId)
+        }
+    }
+
+    generatedIds.toArray
+  }
 }

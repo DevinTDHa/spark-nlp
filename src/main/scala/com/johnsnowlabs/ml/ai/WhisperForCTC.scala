@@ -47,21 +47,25 @@ private[johnsnowlabs] class WhisperForCTC(
   extends Serializable
     with Generate {
 
-  private val eosToken = "<|endoftext|>" // TODO: Get form config
+  private val eosToken = "<|endoftext|>" // TODO: Get from config
+  private val vocabWithAddedStrings: Map[String, Int] = vocabulary ++ addedSpecialTokens
+
+  private val tokenizerSpecialTokens: Some[SpecialTokens] = Some(
+    new SpecialTokens(
+      vocabWithAddedStrings,
+      startTokenString = "<|startoftranscript|>", // TODO get from config
+      endTokenString = eosToken,
+      unkTokenString = eosToken,
+      maskTokenString = eosToken,
+      padTokenString = eosToken,
+      additionalStrings = addedSpecialTokens.keys.toArray))
+
   val bpeTokenizer: Gpt2Tokenizer = BpeTokenizer
     .forModel(
       "whisper",
       merges = merges,
-      vocab = vocabulary,
-      specialTokens = Some(
-        new SpecialTokens(
-          vocabulary,
-          startTokenString = "<|startoftranscript|>", // TODO get from config
-          endTokenString = eosToken,
-          unkTokenString = eosToken,
-          maskTokenString = eosToken,
-          padTokenString = eosToken,
-          additionalStrings = addedSpecialTokens.keys.toArray)))
+      vocab = vocabWithAddedStrings,
+      specialTokens = tokenizerSpecialTokens)
     .asInstanceOf[WhisperTokenizer]
 
   private val _tfWhisperSignatures: Map[String, String] =
@@ -111,8 +115,6 @@ private[johnsnowlabs] class WhisperForCTC(
    * Repetition penalty for sampling
    * @param noRepeatNgramSize
    * No repeat ngram size for sampling
-   * @param task
-   * Task
    * @param randomSeed
    * Random seed
    * @param ignoreTokenIds
@@ -121,35 +123,52 @@ private[johnsnowlabs] class WhisperForCTC(
    * Beam size
    * @return
    */
-  def predict(
-               audios: Seq[AnnotationAudio],
-               batchSize: Int,
-               minOutputLength: Int,
-               maxOutputLength: Int,
-               doSample: Boolean,
-               temperature: Double,
-               topK: Int,
-               topP: Double,
-               repetitionPenalty: Double,
-               noRepeatNgramSize: Int,
-               task: String,
-               randomSeed: Option[Long] = None,
-               ignoreTokenIds: Array[Int] = Array(),
-               beamSize: Int): Seq[Annotation] = {
+  def generateFromAudio(
+                         audios: Seq[AnnotationAudio],
+                         batchSize: Int,
+                         maxOutputLength: Int,
+                         minOutputLength: Int,
+                         doSample: Boolean,
+                         beamSize: Int,
+                         numReturnSequences: Int,
+                         temperature: Double,
+                         topK: Int,
+                         topP: Double,
+                         repetitionPenalty: Double,
+                         noRepeatNgramSize: Int,
+                         randomSeed: Option[Long],
+                         ignoreTokenIds: Array[Int]): Seq[Annotation] = {
+
+    // TODO: Free Resources
+    val session =
+      tensorflow.getTFSessionWithSignature(configProtoBytes, savedSignatures = signatures)
+
+    def freeResources(): Unit = {
+      tensorResources.clearTensors()
+      session.close()
+    }
 
     val batchedAudio = audios.grouped(batchSize).toArray
-    val batchDecoder =
+    val batchDecodedIds =
       batchedAudio.flatMap { batch: Seq[AnnotationAudio] =>
         val featuresBatch = batch.map { case AnnotationAudio(_, rawFloats, _) =>
           preprocessor.extractFeatures(rawFloats)
         }.toArray
 
+        val encodedBatchFeatures = encode(featuresBatch, session)
+
+        // TODO: Add language or other special tokens at the start
+        val batchDecoderStartIds = Array.fill(batchSize, 1)(bosTokenId)
+
         // Generate the tokens
-        val tokenIds: Array[Array[Int]] = generateTokensIds(
-          featuresBatch,
-          minOutputLength,
+        val tokenIds: Array[Array[Int]] = generate(
+          encodedBatchFeatures,
+          batchDecoderStartIds,
           maxOutputLength,
+          minOutputLength,
           doSample,
+          beamSize,
+          numReturnSequences,
           temperature,
           topK,
           topP,
@@ -157,173 +176,25 @@ private[johnsnowlabs] class WhisperForCTC(
           noRepeatNgramSize,
           randomSeed,
           ignoreTokenIds,
-          beamSize)
+          session)
 
+        freeResources()
         decode(tokenIds)
       }
 
+    // TODO: begin and end index?
     var sentBegin, nextSentEnd = 0
-    batchDecoder.zip(audios).map { case (content, sent) =>
+    batchDecodedIds.zip(audios).map { case (content, audio) =>
       nextSentEnd += content.length - 1
-      val annots = new Annotation(
+      val annotation = new Annotation(
         annotatorType = AnnotatorType.DOCUMENT,
         begin = sentBegin,
         end = nextSentEnd,
         result = content,
-        metadata = sent.metadata)
+        metadata = audio.metadata)
       sentBegin += nextSentEnd + 1
-      annots
+      annotation
     }
-  }
-
-  /** Generates token ids for each batch.
-   *
-   * TODO: Do for batch
-   *
-   * @param batchFeatures
-   * Sequence of extracted features
-   * @param minOutputLength
-   * Minimum length of output
-   * @param maxOutputLength
-   * Maximum length of output
-   * @param doSample
-   * Whether to sample or not
-   * @param temperature
-   * Temperature for sampling
-   * @param topK
-   * Top K for sampling
-   * @param topP
-   * Top P for sampling
-   * @param repetitionPenalty
-   * Repetition penalty for sampling
-   * @param noRepeatNgramSize
-   * No repeat ngram size for sampling
-   * @param randomSeed
-   * Random seed
-   * @param ignoreTokenIds
-   * Ignore token ids
-   * @param beamSize
-   * Beam size
-   * @return
-   * Sequence of WordpieceTokenizedSentence
-   */
-  private def generateTokensIds(
-                                 batchFeatures: Seq[Array[Array[Float]]],
-                                 minOutputLength: Int,
-                                 maxOutputLength: Int,
-                                 doSample: Boolean,
-                                 temperature: Double,
-                                 topK: Int,
-                                 topP: Double,
-                                 repetitionPenalty: Double,
-                                 noRepeatNgramSize: Int,
-                                 randomSeed: Option[Long],
-                                 ignoreTokenIds: Array[Int] = Array(),
-                                 beamSize: Int): Array[Array[Int]] = {
-    ???
-
-    //    val batch: Seq[Array[Int]] = Seq.fill(batchFeatures.length)(Array(bosTokenId))
-    //
-    //    val ignoreTokenIdsInt = ignoreTokenIds
-    //    val expandedEncoderInputIdsVals = batch.flatMap(x => List.fill(beamSize)(x))
-    //    val sequencesLength = expandedEncoderInputIdsVals.map(x => x.length).toArray
-    //    val maxSentenceLength = sequencesLength.max // - curLen
-    //
-    //    val numReturn_sequences = 1
-    //
-    //    // from config
-    //    var effectiveBatch_size = 1
-    //    var effectiveBatch_mult = 1
-    //
-    //    // set effective batch size and effective batch multiplier according to do_sample
-    //    if (doSample) {
-    //      effectiveBatch_size = expandedEncoderInputIdsVals.length * numReturn_sequences
-    //      effectiveBatch_mult = numReturn_sequences
-    //    } else {
-    //      effectiveBatch_size = expandedEncoderInputIdsVals.length
-    //      effectiveBatch_mult = 1
-    //    }
-    //
-    //    // Run encoder
-    //    val tensorEncoder = new TensorResources()
-    //    val inputDim = expandedEncoderInputIdsVals.length * maxSentenceLength
-    //
-    //    val encoderInputBuffers = tensorEncoder.createIntBuffer(inputDim)
-    //    val encoderAttentionMaskBuffers = tensorEncoder.createIntBuffer(inputDim)
-    //
-    //    val shape = Array(expandedEncoderInputIdsVals.length.toLong, maxSentenceLength)
-    //
-    //    expandedEncoderInputIdsVals.zipWithIndex.foreach { case (tokenIds, idx) =>
-    //      val offset = idx * maxSentenceLength
-    //      val diff = maxSentenceLength - tokenIds.length
-    //
-    //      val s = tokenIds.take(maxSentenceLength) ++ Array.fill[Int](diff)(this.paddingTokenId)
-    //      encoderInputBuffers.offset(offset).write(s)
-    //      val mask = s.map(x => if (x != this.paddingTokenId) 1 else 0)
-    //      encoderAttentionMaskBuffers.offset(offset).write(mask)
-    //    }
-    //
-    //    val session = tensorflow.getTFSessionWithSignature(
-    //      configProtoBytes = configProtoBytes,
-    //      initAllTables = false,
-    //      savedSignatures = signatures)
-    //
-    //    val encoderInputTensors = tensorEncoder.createIntBufferTensor(shape, encoderInputBuffers)
-    //    val encoderAttentionMaskTensors =
-    //      tensorEncoder.createIntBufferTensor(shape, encoderAttentionMaskBuffers)
-    //
-    //    val encoderOuts = encode(batchFeatures, session)
-    //    val dim = encoderOutsFloats.length / inputDim
-    //    val encoderOutsBatch =
-    //      encoderOutsFloats.grouped(dim).toArray.grouped(maxSentenceLength).toArray
-    //
-    //
-    //    // Run decoder
-    //    val decoderEncoderStateTensorResources = new TensorResources()
-    //    val decoderEncoderStateBuffers =
-    //      decoderEncoderStateTensorResources.createFloatBuffer(
-    //        expandedEncoderInputIdsVals.length * maxSentenceLength * dim)
-    //    expandedEncoderInputIdsVals.zipWithIndex.foreach { case (_, index) =>
-    //      var offset = index * maxSentenceLength * dim
-    //      encoderOutsBatch(index).foreach(encoderOutput => {
-    //        decoderEncoderStateBuffers.offset(offset).write(encoderOutput)
-    //        offset += dim
-    //      })
-    //    }
-    //
-    //    val decoderEncoderStateTensors = tensorEncoder.createFloatBufferTensor(
-    //      Array(expandedEncoderInputIdsVals.length, maxSentenceLength, dim),
-    //      decoderEncoderStateBuffers)
-    //    val decoderInputs = batch.map(_ => Array(this.eosTokenId)).toArray
-    //    val modelOutputs = generate(
-    //      batch,
-    //      decoderEncoderStateTensors,
-    //      encoderAttentionMaskTensors,
-    //      decoderInputs,
-    //      maxOutputLength,
-    //      minOutputLength,
-    //      doSample,
-    //      beamSize,
-    //      1,
-    //      temperature,
-    //      topK,
-    //      topP,
-    //      repetitionPenalty,
-    //      noRepeatNgramSize,
-    //      this.vocabSize,
-    //      this.eosTokenId,
-    //      this.paddingTokenId,
-    //      randomSeed,
-    //      ignoreTokenIdsInt,
-    //      session)
-    //
-    //    tensorEncoder.clearTensors()
-    //    tensorEncoder.clearSession(encoderOuts)
-    //    decoderEncoderStateTensorResources.clearTensors()
-    //    decoderEncoderStateTensors.close()
-    //    encoderAttentionMaskTensors.close()
-    //    encoderInputTensors.close()
-    //    modelOutputs
   }
 
   /** Decode a sequence of sentences
@@ -436,49 +307,68 @@ private[johnsnowlabs] class WhisperForCTC(
                 randomSeed: Option[Long],
                 ignoreTokenIds: Array[Int],
                 session: Session): Array[Array[Int]] = {
+
     val dummyEncoderInput =
       Seq.fill(decoderInputIds.length)(Array.empty[Int]) // Needs to be size of batch
-
     val dummyEncoderAttentionMaskTensors: Tensor = null // not needed
 
-    super.generate(
-      inputIds = dummyEncoderInput,
-      decoderEncoderStateTensors = decoderEncoderStateTensors,
-      encoderAttentionMaskTensors = dummyEncoderAttentionMaskTensors,
-      decoderInputs = decoderInputIds,
-      maxOutputLength = maxOutputLength,
-      minOutputLength = minOutputLength,
-      doSample = doSample,
-      beamSize = beamSize,
-      numReturnSequences = numReturnSequences,
-      temperature = temperature,
-      topK = topK,
-      topP = topP,
-      repetitionPenalty = repetitionPenalty,
-      noRepeatNgramSize = noRepeatNgramSize,
-      vocabSize = vocabSize,
-      eosTokenId = eosTokenId,
-      paddingTokenId = paddingTokenId,
-      randomSeed = randomSeed,
-      ignoreTokenIds = ignoreTokenIds,
-      session = session,
-      applySoftmax = false)
+    if (beamSize == 1) // Equivalent to greedy search
+      super.generateGreedy(
+        encoderInputIds = dummyEncoderInput,
+        decoderEncoderStateTensors = decoderEncoderStateTensors,
+        encoderAttentionMaskTensors = dummyEncoderAttentionMaskTensors,
+        decoderInputs = decoderInputIds,
+        maxOutputLength = maxOutputLength,
+        minOutputLength = minOutputLength,
+        vocabSize = vocabSize,
+        eosTokenId = eosTokenId,
+        paddingTokenId = paddingTokenId,
+        ignoreTokenIds = ignoreTokenIds,
+        applySoftmax = false,
+        logitProcessor = None,
+        session = session)
+    else
+      super.generate(
+        inputIds = dummyEncoderInput,
+        decoderEncoderStateTensors = decoderEncoderStateTensors,
+        encoderAttentionMaskTensors = dummyEncoderAttentionMaskTensors,
+        decoderInputs = decoderInputIds,
+        maxOutputLength = maxOutputLength,
+        minOutputLength = minOutputLength,
+        doSample = doSample,
+        beamSize = beamSize,
+        numReturnSequences = numReturnSequences,
+        temperature = temperature,
+        topK = topK,
+        topP = topP,
+        repetitionPenalty = repetitionPenalty,
+        noRepeatNgramSize = noRepeatNgramSize,
+        vocabSize = vocabSize,
+        eosTokenId = eosTokenId,
+        paddingTokenId = paddingTokenId,
+        randomSeed = randomSeed,
+        ignoreTokenIds = ignoreTokenIds,
+        session = session,
+        applySoftmax = false)
   }
 
   private def sessionWarmup(): Unit = {
-    val dummyInput = Array.fill(1, 1)(0.0f)
-    generateTokensIds(
-      Array(dummyInput),
-      minOutputLength = 0,
+    val dummyInput = Seq(AnnotationAudio(AnnotatorType.AUDIO, Array.ofDim(1), Map.empty))
+
+    generateFromAudio(
+      dummyInput,
+      batchSize = 2,
       maxOutputLength = 1,
+      minOutputLength = 0,
       doSample = false,
-      temperature = 0f,
-      topK = 0,
-      topP = 0f,
-      repetitionPenalty = 0f,
+      beamSize = 1,
+      numReturnSequences = 1,
+      temperature = 1.0,
+      topK = 1,
+      topP = 1.0,
+      repetitionPenalty = 1.0,
       noRepeatNgramSize = 0,
-      randomSeed = Option(0),
-      ignoreTokenIds = Array(0),
-      beamSize = 1)
+      randomSeed = None,
+      ignoreTokenIds = Array.empty)
   }
 }

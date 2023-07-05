@@ -3,6 +3,7 @@ package com.johnsnowlabs.ml.ai
 import com.johnsnowlabs.ml.tensorflow.{TensorResources, TensorflowWrapper}
 import com.johnsnowlabs.ml.util.LoadExternalModel._
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.{Preprocessor, WhisperPreprocessor}
+import com.johnsnowlabs.nlp.{Annotation, AnnotationAudio, AnnotatorType}
 import com.johnsnowlabs.util.TestUtils.readFile
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
@@ -14,9 +15,6 @@ import scala.collection.JavaConverters._
 class WhisperForCTCTest extends AnyFlatSpec {
   val modelPath =
     "/home/ducha/spark-nlp/dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en_sepV2/"
-
-  val rawFloats: Array[Float] =
-    readFile("src/test/resources/audio/txt/librispeech_asr_0.txt").split("\n").map(_.toFloat)
 
   val ppPath: String = modelPath + "assets/preprocessor_config.json"
 
@@ -48,7 +46,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
         case (key, value) if value.isValidInt => (key, value.toInt)
         case _ => throw new Exception("Could not convert BigInt to Int")
       }
-  } ++ addedTokens
+  }
 
   val merges: Map[(String, String), Int] = loadTextAsset(localModelPath, "merges.txt")
     .map(_.split(" "))
@@ -66,6 +64,14 @@ class WhisperForCTCTest extends AnyFlatSpec {
     val configString = loadJsonStringAsset(localModelPath, "generation_config.json")
     parse(configString).values.asInstanceOf[Map[String, Any]]
   }
+
+  val suppressTokenIds: Array[Int] =
+    generationConfig.get("suppress_tokens") match {
+      case Some(value: List[BigInt]) => value.toArray.map(_.toInt)
+      case _ =>
+        throw new Exception(s"Invalid format for suppress_tokens. Should be a List of integers.")
+    }
+
   val (wrapper, signatures) =
     TensorflowWrapper.read(modelPath, zipped = false, useBundle = true, tags = Array("serve"))
 
@@ -73,10 +79,15 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   private val tfSession: Session = wrapper.getTFSessionWithSignature(savedSignatures = signatures)
 
-  private val encodedFeatures: Tensor = {
-    val features: Array[Array[Float]] = preprocessor.extractFeatures(rawFloats)
+  val rawFloats: Seq[Array[Float]] = (0 to 1).map { i =>
+    readFile(s"src/test/resources/audio/txt/librispeech_asr_$i.txt").split("\n").map(_.toFloat)
+  }
 
-    whisperModel.encode(Array(features), tfSession)
+  val encodedBatchFeatures: Tensor = {
+    val batchFeatures: Array[Array[Array[Float]]] =
+      rawFloats.map(preprocessor.extractFeatures).toArray
+
+    whisperModel.encode(batchFeatures, tfSession)
   }
 
   val maxLength = 448
@@ -87,14 +98,15 @@ class WhisperForCTCTest extends AnyFlatSpec {
     signatures = signatures,
     preprocessor,
     merges,
-    vocabulary = vocabMap)
+    vocabulary = vocabMap,
+    addedSpecialTokens = addedTokens)
 
   behavior of "Whisper"
 
   private val startToken: Int = whisperModel.bosTokenId
   it should "run model" in {
 
-    val encoderOutputs: Tensor = encodedFeatures
+    val encoderOutputs: Tensor = encodedBatchFeatures
 
     val encoderOutputsOp = "decoder_encoder_outputs:0"
     val decoderInputIds =
@@ -119,19 +131,13 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   }
 
-  it should "construct correct vocabSize" in {
-    1 + 2
-    println(whisperModel)
-
-  }
-
   it should "getModelOutput" in {
 
     val decoderInputIds = Array(startToken)
 
     val batchDecoderInputIds = Seq(decoderInputIds)
     val modelOutput: Array[Array[Float]] = whisperModel.getModelOutput(
-      encodedFeatures,
+      encodedBatchFeatures,
       batchDecoderInputIds,
       maxLength = maxLength,
       tfSession)
@@ -148,7 +154,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
     val batchFeatureTensor: Tensor = {
       val rawFloats: Array[Array[Float]] =
         TensorResources
-          .extractFloats(encodedFeatures)
+          .extractFloats(encodedBatchFeatures)
           .grouped(384)
           .toArray
           .grouped(1500)
@@ -172,15 +178,15 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
     def callModel(in: Seq[Array[Int]]): Array[Float] = {
       val output = whisperModel
-        .getModelOutput(encodedFeatures, in, maxLength = maxLength, tfSession)
+        .getModelOutput(encodedBatchFeatures, in, maxLength = maxLength, tfSession)
 
       require(output.length == 1, s"Shape of output is wrong (Batch size: ${output.length}).")
       output.head
     }
 
     def argmax(x: Array[Float]): Int =
-      x.zipWithIndex.maxBy { case (out, _) =>
-        out
+      x.zipWithIndex.maxBy { case (value, _) =>
+        value
       }._2
 
     var nextDecoderInputIds: Seq[Array[Int]] = batchDecoderInputIds
@@ -200,7 +206,35 @@ class WhisperForCTCTest extends AnyFlatSpec {
     println(whisperModel.bpeTokenizer.decodeTokens(sentence))
   }
 
-  it should "generate" in {
+  it should "generate for batch" in {
+
+    val batchDecoderInputIds: Array[Array[Int]] = Array.fill(2, 1)(startToken)
+
+    val generatedIds = whisperModel
+      .generate(
+        decoderEncoderStateTensors = encodedBatchFeatures,
+        decoderInputIds = batchDecoderInputIds,
+        maxOutputLength = maxLength,
+        minOutputLength = 0,
+        doSample = false,
+        beamSize = 1,
+        numReturnSequences = 1,
+        temperature = 1.0,
+        topK = 1,
+        topP = 1.0,
+        repetitionPenalty = 1.0,
+        noRepeatNgramSize = 0,
+        randomSeed = None,
+        ignoreTokenIds = suppressTokenIds,
+        session = tfSession)
+
+    println(generatedIds.last.mkString("Array(", ", ", ")"))
+
+    whisperModel.decode(generatedIds).foreach(println)
+
+  }
+
+  it should "generate multiple beams" in {
     val batchDecoderInputIds: Array[Array[Int]] = Array({
       val decoderInputIds = Array(startToken)
       decoderInputIds
@@ -213,7 +247,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
     val generatedIds = whisperModel
       .generate(
-        decoderEncoderStateTensors = encodedFeatures,
+        decoderEncoderStateTensors = encodedBatchFeatures,
         decoderInputIds = batchDecoderInputIds,
         maxOutputLength = maxLength,
         minOutputLength = 0,
@@ -222,7 +256,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
         numReturnSequences = 2, // 1 for greedy search
         temperature = 1.0,
         topK = 5, // 1 for greedy search
-        topP = 1.0,
+        topP = 0.7,
         repetitionPenalty = 1.0,
         noRepeatNgramSize = 0,
         randomSeed = None,
@@ -233,6 +267,30 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
     whisperModel.decode(generatedIds).foreach(println)
 
+  }
+
+  it should "generate token ids" in {
+    val audioAnnotations = rawFloats.map { rawFloats =>
+      AnnotationAudio(AnnotatorType.AUDIO, rawFloats, Map.empty)
+    }
+
+    val generatedTokens: Seq[Annotation] = whisperModel.generateFromAudio(
+      audios = audioAnnotations,
+      batchSize = 2,
+      maxOutputLength = maxLength,
+      minOutputLength = 0,
+      doSample = false,
+      beamSize = 1,
+      numReturnSequences = 1,
+      temperature = 1.0,
+      topK = 1,
+      topP = 1.0,
+      repetitionPenalty = 1.0,
+      noRepeatNgramSize = 0,
+      randomSeed = None,
+      ignoreTokenIds = suppressTokenIds)
+
+    println(generatedTokens.mkString(", "))
   }
 
 }

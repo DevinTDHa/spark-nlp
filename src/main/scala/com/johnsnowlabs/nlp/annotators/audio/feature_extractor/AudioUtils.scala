@@ -9,14 +9,14 @@ import com.johnsnowlabs.ml.util.LinAlg.implicits.ExtendedDenseMatrix
 object AudioUtils {
 
   /** Converts Hertz to Mels.
-   *
-   * Uses method proposed by Slaney 1998, adapted from huggingface transformer.
-   *
-   * @param freq
-   * Frequency in Hertz
-   * @return
-   * Frequency in Mels
-   */
+    *
+    * Uses method proposed by Slaney 1998, adapted from huggingface transformer.
+    *
+    * @param freq
+    *   Frequency in Hertz
+    * @return
+    *   Frequency in Mels
+    */
   def hertzToMel(freq: Double): Double = {
     val minLogHertz = 1000.0
     val minLogMel = 15.0
@@ -49,15 +49,15 @@ object AudioUtils {
   }
 
   /** Creates a triangular filter bank.
-   *
-   * Adapted from huggingface transformer.
-   *
-   * @param fftFreqs
-   * Discrete frequencies of the FFT bins in Hz
-   * @param filterFreqs
-   * Center frequencies of the triangular filters to create, in Hz
-   * @return
-   */
+    *
+    * Adapted from huggingface transformer.
+    *
+    * @param fftFreqs
+    *   Discrete frequencies of the FFT bins in Hz
+    * @param filterFreqs
+    *   Center frequencies of the triangular filters to create, in Hz
+    * @return
+    */
   private def createTriangularFilterBank(
       fftFreqs: DenseVector[Double],
       filterFreqs: DenseVector[Double]): DenseMatrix[Double] = {
@@ -89,30 +89,30 @@ object AudioUtils {
   }
 
   /** Creates a matrix to convert a spectrogram to the mel scale.
-   *
-   * Currently only the filter bank from the Auditory Toolbox for MATLAB (Slaney 1998) is
-   * supported.
-   *
-   * Adapted from huggingface transformer.
-   *
-   * @param numFrequencyBins
-   * Number of the frequency bins after used for fourier transform
-   * @param numMelFilters
-   * Number of mel filters to generate
-   * @param minFrequency
-   * Lowest frequency in Hz
-   * @param maxFrequency
-   * Highest frequency in Hz
-   * @param samplingRate
-   * Sample rate of the audio
-   * @return
-   */
+    *
+    * Currently only the filter bank from the Auditory Toolbox for MATLAB (Slaney 1998) is
+    * supported.
+    *
+    * Adapted from huggingface transformer.
+    *
+    * @param numFrequencyBins
+    *   Number of the frequency bins after used for fourier transform
+    * @param numMelFilters
+    *   Number of mel filters to generate
+    * @param minFrequency
+    *   Lowest frequency in Hz
+    * @param maxFrequency
+    *   Highest frequency in Hz
+    * @param samplingRate
+    *   Sample rate of the audio
+    * @return
+    */
   def melFilterBank(
-                     numFrequencyBins: Int,
-                     numMelFilters: Int,
-                     minFrequency: Double,
-                     maxFrequency: Double,
-                     samplingRate: Int): DenseMatrix[Double] = {
+      numFrequencyBins: Int,
+      numMelFilters: Int,
+      minFrequency: Double,
+      maxFrequency: Double,
+      samplingRate: Int): DenseMatrix[Double] = {
 
     val fftFreqs = linspace(0, samplingRate / 2, numFrequencyBins)
 
@@ -134,24 +134,24 @@ object AudioUtils {
     if (max(normedMelFilters, Axis._0).t.exists(_ == 0.0d))
       println(
         "Warning: At least one mel filter has all zero values. " +
-          "The value of numMelFilters might be se to high or numFrequencyBins too low.")
+          "The value of numMelFilters might be set too high or numFrequencyBins too low.")
 
     normedMelFilters
   }
 
   /** Pads a vector with the reflection of the vector. It is mirrored on the first and last values
-   * of it along each axis.
-   *
-   * This method is adapted from numpy. However, reflections larger than the initial vector are
-   * currently not supported.
-   *
-   * @param vector
-   * Vector to be padded
-   * @param padding
-   * Padding for the left and right side
-   * @return
-   * Vector of size `padding._1 + vector.length + padding._2``
-   */
+    * of it along each axis.
+    *
+    * This method is adapted from numpy. However, reflections larger than the initial vector are
+    * currently not supported.
+    *
+    * @param vector
+    *   Vector to be padded
+    * @param padding
+    *   Padding for the left and right side
+    * @return
+    *   Vector of size `padding._1 + vector.length + padding._2``
+    */
   // noinspection ReplaceToWithUntil
   def padReflective(vector: DenseVector[Double], padding: (Int, Int)): DenseVector[Double] = {
     require(
@@ -163,51 +163,51 @@ object AudioUtils {
   }
 
   /** Calculates a spectrogram over one waveform using the Short-Time Fourier Transform.
-   *
-   * We assume that the waveform has been zero padded beforehand. Currently, this method only
-   * supports the mel spectrogram. It uses the breeze implementation of the fourier transform.
-   *
-   * Adapted from huggingface transformer.
-   *
-   * How this works:
-   *
-   *   1. The input waveform is split into frames of size `frameLength` that are partially
-   *      overlapping by `frameLength - hopLength` samples.
-   *   1. Each frame is multiplied by the window.
-   *   1. The DFT is taken of each windowed frame.
-   *   1. The resulting rows of the spectrogram are stacked to form the final matrix.
-   *
-   * @param waveform
-   * The input waveform to process
-   * @param window
-   * The window to use for each frame
-   * @param frameLength
-   * Length of each frame
-   * @param hopLength
-   * Length to advance in the waveform for each overlapping step
-   * @param melFilters
-   * The mel filters to apply
-   * @param power
-   * Exponent to scale the spectrogram
-   * @param center
-   * Whether to center the waveform and pad reflectively
-   * @param onesided
-   * Whether to only return the positive DFT
-   * @param melFloor
-   * Lowest value to apply for the mel spectrogram
-   * @return
-   * Log Mel Spectrogram of the waveform
-   */
+    *
+    * We assume that the waveform has been zero padded beforehand. Currently, this method only
+    * supports the mel spectrogram. It uses the breeze implementation of the fourier transform.
+    *
+    * Adapted from huggingface transformer.
+    *
+    * How this works:
+    *
+    *   1. The input waveform is split into frames of size `frameLength` that are partially
+    *      overlapping by `frameLength - hopLength` samples.
+    *   1. Each frame is multiplied by the window.
+    *   1. The DFT is taken of each windowed frame.
+    *   1. The resulting rows of the spectrogram are stacked to form the final matrix.
+    *
+    * @param waveform
+    *   The input waveform to process
+    * @param window
+    *   The window to use for each frame
+    * @param frameLength
+    *   Length of each frame
+    * @param hopLength
+    *   Length to advance in the waveform for each overlapping step
+    * @param melFilters
+    *   The mel filters to apply
+    * @param power
+    *   Exponent to scale the spectrogram
+    * @param center
+    *   Whether to center the waveform and pad reflectively
+    * @param onesided
+    *   Whether to only return the positive DFT
+    * @param melFloor
+    *   Lowest value to apply for the mel spectrogram
+    * @return
+    *   Log Mel Spectrogram of the waveform
+    */
   def calculateSpectrogram(
-                            waveform: DenseVector[Double],
-                            window: DenseVector[Double],
-                            frameLength: Int,
-                            hopLength: Int,
-                            melFilters: DenseMatrix[Double],
-                            power: Double,
-                            center: Boolean = true,
-                            onesided: Boolean = true,
-                            melFloor: Double = 1e-10): DenseMatrix[Double] = {
+      waveform: DenseVector[Double],
+      window: DenseVector[Double],
+      frameLength: Int,
+      hopLength: Int,
+      melFilters: DenseMatrix[Double],
+      power: Double,
+      center: Boolean = true,
+      onesided: Boolean = true,
+      melFloor: Double = 1e-10): DenseMatrix[Double] = {
 
     require(window.length == frameLength, "Window must be same size as the frame")
 

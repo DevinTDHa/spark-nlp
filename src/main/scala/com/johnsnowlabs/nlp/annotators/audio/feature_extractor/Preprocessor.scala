@@ -23,12 +23,12 @@ import org.json4s.{Formats, JNothing, JValue}
 import scala.collection.mutable.ArrayBuffer
 
 private[johnsnowlabs] case class Preprocessor(
-                                               do_normalize: Boolean = true,
-                                               feature_size: Int,
-                                               padding_side: String,
-                                               padding_value: Float,
-                                               return_attention_mask: Boolean,
-                                               sampling_rate: Int)
+    do_normalize: Boolean = true,
+    feature_size: Int,
+    padding_side: String,
+    padding_value: Float,
+    return_attention_mask: Boolean,
+    sampling_rate: Int)
 
 // TODO add truncate
 private[johnsnowlabs] object Preprocessor {
@@ -143,10 +143,10 @@ private[johnsnowlabs] object Preprocessor {
   }
 
   def pad(
-           audio: Array[Float],
-           paddingValue: Float,
-           totalLength: Int,
-           paddingSide: String): Array[Float] = {
+      audio: Array[Float],
+      paddingValue: Float,
+      totalLength: Int,
+      paddingSide: String): Array[Float] = {
     val padding = Array.fill(totalLength - audio.length)(paddingValue)
 
     paddingSide match {

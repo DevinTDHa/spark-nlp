@@ -12,7 +12,7 @@ import org.tensorflow.{Session, Tensor}
 
 import scala.collection.JavaConverters._
 
-class WhisperForCTCTest extends AnyFlatSpec {
+class WhisperTestSpec extends AnyFlatSpec {
   val modelPath =
     "/home/ducha/spark-nlp/dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en_sepV2/"
 
@@ -92,18 +92,17 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   val maxLength = 448
 
-  lazy val whisperModel = new WhisperForCTC(
-    tensorflow = wrapper,
+  lazy val whisperModel = new Whisper(
+    tensorflowWrapper = wrapper,
     configProtoBytes = None,
     signatures = signatures,
     preprocessor,
-    merges,
     vocabulary = vocabMap,
     addedSpecialTokens = addedTokens)
 
   behavior of "Whisper"
 
-  private val startToken: Int = whisperModel.bosTokenId
+  private val startToken: Int = 50257
   it should "run model" in {
 
     val encoderOutputs: Tensor = encodedBatchFeatures
@@ -203,7 +202,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
     val sentence: Array[Int] =
       nextDecoderInputIds.head.slice(2, nextDecoderInputIds.head.length)
 
-    println(whisperModel.bpeTokenizer.decodeTokens(sentence))
+    println(whisperModel.tokenDecoder.decodeTokens(sentence))
   }
 
   it should "generate for batch" in {

@@ -343,7 +343,6 @@ object BpeTokenizer {
           modelSpecialTokens(),
           padWithSentenceTokens,
           addPrefixSpace = addPrefixSpace)
-      case "whisper" => new WhisperTokenizer(merges, vocab, modelSpecialTokens())
       case _ =>
         throw new IllegalArgumentException("Model type \"" + modelType + "\" not supported yet.")
     }

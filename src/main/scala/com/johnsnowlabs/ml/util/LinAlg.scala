@@ -11,22 +11,22 @@ object LinAlg {
       def shape: (Int, Int) = (m.rows, m.cols)
 
       /** Broadcast a DenseMatrix to a target matrix. Uses the same logic as numpy broadcasting.
-       *
-       * @param targetMatrix
-       * Target matrix with desired shape
-       * @return
-       * Matrix with the same shape as the target matrix
-       */
+        *
+        * @param targetMatrix
+        *   Target matrix with desired shape
+        * @return
+        *   Matrix with the same shape as the target matrix
+        */
       def broadcastTo(targetMatrix: DenseMatrix[Double]): DenseMatrix[Double] =
         broadcastTo((targetMatrix.rows, targetMatrix.cols))
 
       /** Broadcast a DenseMatrix to an explicit shape. Uses the same logic as numpy broadcasting.
-       *
-       * @param shape
-       * Target shape of the matrix
-       * @return
-       * Matrix with target shape
-       */
+        *
+        * @param shape
+        *   Target shape of the matrix
+        * @return
+        *   Matrix with target shape
+        */
       def broadcastTo(shape: (Int, Int)): DenseMatrix[Double] = {
         val (targetRows, targetCols) = shape
 

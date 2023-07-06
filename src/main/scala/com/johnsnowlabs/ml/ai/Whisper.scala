@@ -20,62 +20,60 @@ import com.johnsnowlabs.ml.ai.util.Generation.Generate
 import com.johnsnowlabs.ml.tensorflow.sign.{ModelSignatureConstants, ModelSignatureManager}
 import com.johnsnowlabs.ml.tensorflow.{TensorResources, TensorflowWrapper}
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.WhisperPreprocessor
-import com.johnsnowlabs.nlp.annotators.tokenizer.bpe.{BpeTokenizer, Gpt2Tokenizer, SpecialTokens, WhisperTokenizer}
+import com.johnsnowlabs.nlp.annotators.tokenizer.bpe.{SpecialTokens, WhisperTokenDecoder}
 import com.johnsnowlabs.nlp.{Annotation, AnnotationAudio, AnnotatorType}
 import org.tensorflow.{Session, Tensor}
 
 import scala.collection.JavaConverters._
 
-/** This class is used to run the Whisper model.
- *
- * Input for this model must be tokenized with a SentencePieceModel,
- *
- * @param tensorflow
- * BART Model wrapper with TensorFlowWrapper
- * @param configProtoBytes
- * Configuration for TensorFlow session
- */
-
-private[johnsnowlabs] class WhisperForCTC(
-                                           val tensorflow: TensorflowWrapper,
-                                           configProtoBytes: Option[Array[Byte]] = None,
-                                           signatures: Option[Map[String, String]] = None,
-                                           preprocessor: WhisperPreprocessor,
-                                           merges: Map[(String, String), Int],
-                                           vocabulary: Map[String, Int],
-                                           addedSpecialTokens: Map[String, Int] = Map.empty)
-  extends Serializable
+/** Class representing a Whisper model. Used to call the model and generate tokens.
+  *
+  * @param tensorflowWrapper
+  *   Tensorflow Wrapper
+  * @param configProtoBytes
+  *   Config ProtoBytes
+  * @param signatures
+  *   Signatures of the model
+  * @param preprocessor
+  *   Whisper preprocessor to extract features
+  * @param vocabulary
+  *   Vocabulary for decoding
+  * @param addedSpecialTokens
+  *   Added special tokens
+  */
+private[johnsnowlabs] class Whisper(
+    val tensorflowWrapper: TensorflowWrapper,
+    configProtoBytes: Option[Array[Byte]] = None,
+    signatures: Option[Map[String, String]] = None,
+    preprocessor: WhisperPreprocessor,
+    vocabulary: Map[String, Int],
+    addedSpecialTokens: Map[String, Int] = Map.empty)
+    extends Serializable
     with Generate {
 
-  private val eosToken = "<|endoftext|>" // TODO: Get from config
-  private val vocabWithAddedStrings: Map[String, Int] = vocabulary ++ addedSpecialTokens
+  // TODO: Keep this static?
+  val bosTokenId: Int = 50257
+  val paddingTokenId: Int = 50256
+  val eosTokenId: Int = 50256
+  val logitsOutputSize: Int = 51864
 
-  private val tokenizerSpecialTokens: Some[SpecialTokens] = Some(
-    new SpecialTokens(
-      vocabWithAddedStrings,
-      startTokenString = "<|startoftranscript|>", // TODO get from config
-      endTokenString = eosToken,
-      unkTokenString = eosToken,
-      maskTokenString = eosToken,
-      padTokenString = eosToken,
-      additionalStrings = addedSpecialTokens.keys.toArray))
+  private val vocabWithAddedTokens: Map[String, Int] = vocabulary ++ addedSpecialTokens
 
-  val bpeTokenizer: Gpt2Tokenizer = BpeTokenizer
-    .forModel(
-      "whisper",
-      merges = merges,
-      vocab = vocabWithAddedStrings,
-      specialTokens = tokenizerSpecialTokens)
-    .asInstanceOf[WhisperTokenizer]
+  private val tokenizerSpecialTokens: SpecialTokens =
+    SpecialTokens(
+      vocabWithAddedTokens,
+      startTokenId = bosTokenId,
+      endTokenId = eosTokenId,
+      unkTokenId = eosTokenId,
+      maskTokenId = eosTokenId,
+      padTokenId = eosTokenId,
+      additionalTokenIds = addedSpecialTokens.values.toArray)
+
+  val tokenDecoder: WhisperTokenDecoder =
+    new WhisperTokenDecoder(vocabWithAddedTokens, tokenizerSpecialTokens)
 
   private val _tfWhisperSignatures: Map[String, String] =
     signatures.getOrElse(ModelSignatureManager.apply())
-
-  // TODO: get from config
-  val bosTokenId = 50257
-  val paddingTokenId = 50256
-  val eosTokenId = 50256
-  val vocabSize = 51864 // TODO: != vocabulary.length Discrepancy? 1607 Missing?
 
   var tensorResources = new TensorResources()
 
@@ -96,52 +94,51 @@ private[johnsnowlabs] class WhisperForCTC(
     ModelSignatureConstants.LogitsOutput.value)
 
   /** @param audios
-   * Sequence of audio floats
-   * @param batchSize
-   * Batch size
-   * @param minOutputLength
-   * Minimum length of output
-   * @param maxOutputLength
-   * Maximum length of output
-   * @param doSample
-   * Whether to sample or not
-   * @param temperature
-   * Temperature for sampling
-   * @param topK
-   * Top K for sampling
-   * @param topP
-   * Top P for sampling
-   * @param repetitionPenalty
-   * Repetition penalty for sampling
-   * @param noRepeatNgramSize
-   * No repeat ngram size for sampling
-   * @param randomSeed
-   * Random seed
-   * @param ignoreTokenIds
-   * Ignore token ids
-   * @param beamSize
-   * Beam size
-   * @return
-   */
+    *   Sequence of audio floats
+    * @param batchSize
+    *   Batch size
+    * @param minOutputLength
+    *   Minimum length of output
+    * @param maxOutputLength
+    *   Maximum length of output
+    * @param doSample
+    *   Whether to sample or not
+    * @param temperature
+    *   Temperature for sampling
+    * @param topK
+    *   Top K for sampling
+    * @param topP
+    *   Top P for sampling
+    * @param repetitionPenalty
+    *   Repetition penalty for sampling
+    * @param noRepeatNgramSize
+    *   No repeat ngram size for sampling
+    * @param randomSeed
+    *   Random seed
+    * @param ignoreTokenIds
+    *   Ignore token ids
+    * @param beamSize
+    *   Beam size
+    * @return
+    */
   def generateFromAudio(
-                         audios: Seq[AnnotationAudio],
-                         batchSize: Int,
-                         maxOutputLength: Int,
-                         minOutputLength: Int,
-                         doSample: Boolean,
-                         beamSize: Int,
-                         numReturnSequences: Int,
-                         temperature: Double,
-                         topK: Int,
-                         topP: Double,
-                         repetitionPenalty: Double,
-                         noRepeatNgramSize: Int,
-                         randomSeed: Option[Long],
-                         ignoreTokenIds: Array[Int]): Seq[Annotation] = {
+      audios: Seq[AnnotationAudio],
+      batchSize: Int,
+      maxOutputLength: Int,
+      minOutputLength: Int,
+      doSample: Boolean,
+      beamSize: Int,
+      numReturnSequences: Int,
+      temperature: Double,
+      topK: Int,
+      topP: Double,
+      repetitionPenalty: Double,
+      noRepeatNgramSize: Int,
+      randomSeed: Option[Long],
+      ignoreTokenIds: Array[Int]): Seq[Annotation] = {
 
-    // TODO: Free Resources
     val session =
-      tensorflow.getTFSessionWithSignature(configProtoBytes, savedSignatures = signatures)
+      tensorflowWrapper.getTFSessionWithSignature(configProtoBytes, savedSignatures = signatures)
 
     def freeResources(): Unit = {
       tensorResources.clearTensors()
@@ -198,23 +195,23 @@ private[johnsnowlabs] class WhisperForCTC(
   }
 
   /** Decode a sequence of sentences
-   *
-   * @param sentences
-   * Sequence of sentences
-   * @return
-   * Sequence of decoded sentences
-   */
+    *
+    * @param sentences
+    *   Sequence of sentences
+    * @return
+    *   Sequence of decoded sentences
+    */
   def decode(sentences: Array[Array[Int]]): Seq[String] = {
-    sentences.map(s => bpeTokenizer.decodeTokens(s))
+    sentences.map(s => tokenDecoder.decodeTokens(s))
   }
 
   /** Encodes a batch of preprocessed input audio.
-   *
-   * @param features
-   * Batch of Whisper features
-   * @return
-   * Tensor with encoded features for each batch
-   */
+    *
+    * @param features
+    *   Batch of Whisper features
+    * @return
+    *   Tensor with encoded features for each batch
+    */
   def encode(features: Array[Array[Array[Float]]], session: Session): Tensor = {
     val runner: Session#Runner =
       session.runner
@@ -229,51 +226,47 @@ private[johnsnowlabs] class WhisperForCTC(
       .asScala
       .head
 
-    // TODO: Close this Tensor
     encoderOutputs
   }
 
   override def getModelOutput(
-                               encoderInputIds: Seq[Array[Int]],
-                               decoderInputIds: Seq[Array[Int]],
-                               decoderEncoderStateTensors: Tensor,
-                               encoderAttentionMaskTensors: Tensor,
-                               maxLength: Int,
-                               session: Session): Array[Array[Float]] = {
+      encoderInputIds: Seq[Array[Int]],
+      decoderInputIds: Seq[Array[Int]],
+      decoderEncoderStateTensors: Tensor,
+      encoderAttentionMaskTensors: Tensor,
+      maxLength: Int,
+      session: Session): Array[Array[Float]] = {
     getModelOutput(decoderEncoderStateTensors, decoderInputIds, maxLength, session)
   }
 
   /** Get model output for a batch of input sequences
-   *
-   * TODO: Caching
-   *
-   * @param encodedInputsTensor
-   * Batch of encoded features as a Tensor
-   * @param decoderInputIds
-   * Batch of decoder input ids
-   * @param maxLength
-   * Max length of the output
-   * @param session
-   * tensorflow session
-   * @return
-   * Model output logits for the last input token for the batches
-   */
+    *
+    * TODO: Caching
+    *
+    * @param encodedInputsTensor
+    *   Batch of encoded features as a Tensor
+    * @param decoderInputIds
+    *   Batch of decoder input ids
+    * @param maxLength
+    *   Max length of the output
+    * @param session
+    *   tensorflow session
+    * @return
+    *   Model output logits for the last input token for the batches
+    */
   def getModelOutput(
-                      encodedInputsTensor: Tensor,
-                      decoderInputIds: Seq[Array[Int]],
-                      maxLength: Int,
-                      session: Session): Array[Array[Float]] = {
+      encodedInputsTensor: Tensor,
+      decoderInputIds: Seq[Array[Int]],
+      maxLength: Int,
+      session: Session): Array[Array[Float]] = {
 
     //    val sequencesLength = decoderInputIds.map(x => x.length).toArray
 
-    // TODO: If max length exceeded, just stop?
-    //    val maxSentenceLength = Math.max(sequencesLength.max, maxLength)
-    // require(maxSentenceLength <= maxSentenceLength)
-
-    val decoderInputLength = decoderInputIds.head.length
+    // TODO: If max length exceeded?
+    val truncatedInputIds = decoderInputIds.map(_.slice(0, maxLength))
 
     val decoderInputIdsTensor: Tensor =
-      tensorResources.createTensor[Array[Array[Int]]](decoderInputIds.toArray)
+      tensorResources.createTensor[Array[Array[Int]]](truncatedInputIds.toArray)
 
     val runner = session.runner
       .feed(decoderInputIdsOp, decoderInputIdsTensor)
@@ -285,28 +278,27 @@ private[johnsnowlabs] class WhisperForCTC(
     decoderOuts.head.close()
 
     val nextTokenLogits =
-      logitsRaw.grouped(vocabSize).toArray // Should result in length batch size
+      logitsRaw.grouped(logitsOutputSize).toArray // Should result in length batch size
     tensorResources.clearTensors()
-    //    encodedInputsTensor.close() // TODO: Do this later
     nextTokenLogits
   }
 
   def generate(
-                decoderEncoderStateTensors: Tensor,
-                decoderInputIds: Array[Array[Int]],
-                maxOutputLength: Int,
-                minOutputLength: Int,
-                doSample: Boolean,
-                beamSize: Int,
-                numReturnSequences: Int,
-                temperature: Double,
-                topK: Int,
-                topP: Double,
-                repetitionPenalty: Double,
-                noRepeatNgramSize: Int,
-                randomSeed: Option[Long],
-                ignoreTokenIds: Array[Int],
-                session: Session): Array[Array[Int]] = {
+      decoderEncoderStateTensors: Tensor,
+      decoderInputIds: Array[Array[Int]],
+      maxOutputLength: Int,
+      minOutputLength: Int,
+      doSample: Boolean,
+      beamSize: Int,
+      numReturnSequences: Int,
+      temperature: Double,
+      topK: Int,
+      topP: Double,
+      repetitionPenalty: Double,
+      noRepeatNgramSize: Int,
+      randomSeed: Option[Long],
+      ignoreTokenIds: Array[Int],
+      session: Session): Array[Array[Int]] = {
 
     val dummyEncoderInput =
       Seq.fill(decoderInputIds.length)(Array.empty[Int]) // Needs to be size of batch
@@ -320,7 +312,7 @@ private[johnsnowlabs] class WhisperForCTC(
         decoderInputs = decoderInputIds,
         maxOutputLength = maxOutputLength,
         minOutputLength = minOutputLength,
-        vocabSize = vocabSize,
+        vocabSize = logitsOutputSize,
         eosTokenId = eosTokenId,
         paddingTokenId = paddingTokenId,
         ignoreTokenIds = ignoreTokenIds,
@@ -343,7 +335,7 @@ private[johnsnowlabs] class WhisperForCTC(
         topP = topP,
         repetitionPenalty = repetitionPenalty,
         noRepeatNgramSize = noRepeatNgramSize,
-        vocabSize = vocabSize,
+        vocabSize = logitsOutputSize,
         eosTokenId = eosTokenId,
         paddingTokenId = paddingTokenId,
         randomSeed = randomSeed,

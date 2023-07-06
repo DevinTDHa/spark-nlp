@@ -5,25 +5,22 @@ import breeze.signal.support.WindowFunctions.hanningWindow
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.AudioUtils.matrixToFloatArray
 
 class WhisperPreprocessor(
-    val chunk_length: Int,
-    val feature_extractor_type: String,
     override val feature_size: Int,
     val hop_length: Int,
     val n_fft: Int,
     val n_samples: Int,
-    val nb_max_frames: Int,
+    val nb_max_frames: Int, // TODO?
     override val padding_side: String,
     override val padding_value: Float,
-    val processor_class: String,
-    override val return_attention_mask: Boolean,
     override val sampling_rate: Int)
     extends Preprocessor(
       do_normalize = false,
       feature_size = feature_size,
       padding_side = padding_side,
       padding_value = padding_value,
-      return_attention_mask = return_attention_mask,
-      sampling_rate = sampling_rate) {
+      return_attention_mask = false,
+      sampling_rate = sampling_rate)
+    with Serializable {
 
   require(n_fft < n_samples, "n_fft should be smaller than n_samples.")
   require(hop_length > 0, "hop_length must be greater than 0.")
@@ -45,15 +42,15 @@ class WhisperPreprocessor(
     samplingRate = sampling_rate)
 
   /** Creates the log-mel spectrogram of given float waveform and transforms it into features for
-   * the Whisper model. We assume, that the input has not been preprocessed yet.
-   *
-   * Adapted from huggingface transformer.
-   *
-   * @param rawFloats
-   * The waveform to transform into features
-   * @return
-   * Extracted Features
-   */
+    * the Whisper model. We assume, that the input has not been preprocessed yet.
+    *
+    * Adapted from huggingface transformer.
+    *
+    * @param rawFloats
+    *   The waveform to transform into features
+    * @return
+    *   Extracted Features
+    */
   def extractFeatures(rawFloats: Array[Float]): Array[Array[Float]] = {
 
     val waveformVector: DenseVector[Double] = {

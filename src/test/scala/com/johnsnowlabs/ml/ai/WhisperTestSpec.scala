@@ -13,6 +13,8 @@ import org.tensorflow.{Session, Tensor}
 import scala.collection.JavaConverters._
 
 class WhisperTestSpec extends AnyFlatSpec {
+  implicit val formats = DefaultFormats
+
   val modelPath =
     "/home/ducha/spark-nlp/dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en_sepV2/"
 
@@ -60,17 +62,13 @@ class WhisperTestSpec extends AnyFlatSpec {
       .asInstanceOf[Map[String, Any]]
 
   // TODO Should be moved to processor?
-  val generationConfig: Map[String, Any] = {
+  val generationConfig: JValue = {
     val configString = loadJsonStringAsset(localModelPath, "generation_config.json")
-    parse(configString).values.asInstanceOf[Map[String, Any]]
+    parse(configString)
   }
 
   val suppressTokenIds: Array[Int] =
-    generationConfig.get("suppress_tokens") match {
-      case Some(value: List[BigInt]) => value.toArray.map(_.toInt)
-      case _ =>
-        throw new Exception(s"Invalid format for suppress_tokens. Should be a List of integers.")
-    }
+    (generationConfig \ "suppress_tokens").extract[Array[Int]]
 
   val (wrapper, signatures) =
     TensorflowWrapper.read(modelPath, zipped = false, useBundle = true, tags = Array("serve"))
@@ -83,14 +81,11 @@ class WhisperTestSpec extends AnyFlatSpec {
     readFile(s"src/test/resources/audio/txt/librispeech_asr_$i.txt").split("\n").map(_.toFloat)
   }
 
-  val encodedBatchFeatures: Tensor = {
-    val batchFeatures: Array[Array[Array[Float]]] =
-      rawFloats.map(preprocessor.extractFeatures).toArray
-
-    whisperModel.encode(batchFeatures, tfSession)
-  }
-
   val maxLength = 448
+  val bosTokenId: Int = 50257
+  val paddingTokenId: Int = 50256
+  val eosTokenId: Int = 50256
+  val logitsOutputSize: Int = 51864
 
   lazy val whisperModel = new Whisper(
     tensorflowWrapper = wrapper,
@@ -98,7 +93,18 @@ class WhisperTestSpec extends AnyFlatSpec {
     signatures = signatures,
     preprocessor,
     vocabulary = vocabMap,
-    addedSpecialTokens = addedTokens)
+    addedSpecialTokens = addedTokens,
+    bosTokenId = bosTokenId,
+    paddingTokenId = paddingTokenId,
+    eosTokenId = eosTokenId,
+    outputSize = logitsOutputSize)
+
+  lazy val encodedBatchFeatures: Tensor = {
+    val batchFeatures: Array[Array[Array[Float]]] =
+      rawFloats.map(preprocessor.extractFeatures).toArray
+
+    whisperModel.encode(batchFeatures, tfSession)
+  }
 
   behavior of "Whisper"
 
@@ -239,10 +245,7 @@ class WhisperTestSpec extends AnyFlatSpec {
       decoderInputIds
     })
 
-    val suppressTokenIds = generationConfig.get("suppress_tokens") match {
-      case Some(value: List[BigInt]) => value.toArray.map(_.toInt)
-      case _ => throw new Exception("Invalid format for suppress_tokens")
-    }
+    val suppressTokenIds = (generationConfig \ "suppress_tokens").extract[Array[Int]]
 
     val generatedIds = whisperModel
       .generate(

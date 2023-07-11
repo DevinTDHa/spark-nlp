@@ -47,15 +47,13 @@ private[johnsnowlabs] class Whisper(
     signatures: Option[Map[String, String]] = None,
     preprocessor: WhisperPreprocessor,
     vocabulary: Map[String, Int],
-    addedSpecialTokens: Map[String, Int] = Map.empty)
+    addedSpecialTokens: Map[String, Int] = Map.empty,
+    bosTokenId: Int,
+    paddingTokenId: Int,
+    eosTokenId: Int,
+    outputSize: Int)
     extends Serializable
     with Generate {
-
-  // TODO: Keep this static?
-  val bosTokenId: Int = 50257
-  val paddingTokenId: Int = 50256
-  val eosTokenId: Int = 50256
-  val logitsOutputSize: Int = 51864
 
   private val vocabWithAddedTokens: Map[String, Int] = vocabulary ++ addedSpecialTokens
 
@@ -140,11 +138,6 @@ private[johnsnowlabs] class Whisper(
     val session =
       tensorflowWrapper.getTFSessionWithSignature(configProtoBytes, savedSignatures = signatures)
 
-    def freeResources(): Unit = {
-      tensorResources.clearTensors()
-      session.close()
-    }
-
     val batchedAudio = audios.grouped(batchSize).toArray
     val batchDecodedIds =
       batchedAudio.flatMap { batch: Seq[AnnotationAudio] =>
@@ -152,10 +145,10 @@ private[johnsnowlabs] class Whisper(
           preprocessor.extractFeatures(rawFloats)
         }.toArray
 
-        val encodedBatchFeatures = encode(featuresBatch, session)
+        val encodedBatchFeatures: Tensor = encode(featuresBatch, session)
 
         // TODO: Add language or other special tokens at the start
-        val batchDecoderStartIds = Array.fill(batchSize, 1)(bosTokenId)
+        val batchDecoderStartIds = Array.fill(batchedAudio.length, 1)(bosTokenId)
 
         // Generate the tokens
         val tokenIds: Array[Array[Int]] = generate(
@@ -175,7 +168,9 @@ private[johnsnowlabs] class Whisper(
           ignoreTokenIds,
           session)
 
-        freeResources()
+        tensorResources.clearTensors()
+        encodedBatchFeatures.close()
+
         decode(tokenIds)
       }
 
@@ -260,9 +255,6 @@ private[johnsnowlabs] class Whisper(
       maxLength: Int,
       session: Session): Array[Array[Float]] = {
 
-    //    val sequencesLength = decoderInputIds.map(x => x.length).toArray
-
-    // TODO: If max length exceeded?
     val truncatedInputIds = decoderInputIds.map(_.slice(0, maxLength))
 
     val decoderInputIdsTensor: Tensor =
@@ -275,10 +267,11 @@ private[johnsnowlabs] class Whisper(
 
     val decoderOuts = runner.run().asScala
     val logitsRaw = TensorResources.extractFloats(decoderOuts.head)
-    decoderOuts.head.close()
+    decoderOuts.foreach(_.close())
 
     val nextTokenLogits =
-      logitsRaw.grouped(logitsOutputSize).toArray // Should result in length batch size
+      logitsRaw.grouped(outputSize).toArray // Should result in length batch size
+
     tensorResources.clearTensors()
     nextTokenLogits
   }
@@ -312,7 +305,7 @@ private[johnsnowlabs] class Whisper(
         decoderInputs = decoderInputIds,
         maxOutputLength = maxOutputLength,
         minOutputLength = minOutputLength,
-        vocabSize = logitsOutputSize,
+        vocabSize = outputSize,
         eosTokenId = eosTokenId,
         paddingTokenId = paddingTokenId,
         ignoreTokenIds = ignoreTokenIds,
@@ -335,7 +328,7 @@ private[johnsnowlabs] class Whisper(
         topP = topP,
         repetitionPenalty = repetitionPenalty,
         noRepeatNgramSize = noRepeatNgramSize,
-        vocabSize = logitsOutputSize,
+        vocabSize = outputSize,
         eosTokenId = eosTokenId,
         paddingTokenId = paddingTokenId,
         randomSeed = randomSeed,

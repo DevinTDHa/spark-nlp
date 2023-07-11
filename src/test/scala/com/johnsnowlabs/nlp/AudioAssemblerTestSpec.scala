@@ -11,7 +11,7 @@ class AudioAssemblerTestSpec extends AnyFlatSpec {
   val spark: SparkSession = ResourceHelper.spark
   import spark.implicits._
 
-  val pathToFileWithFloats = "src/test/resources/audio/csv/audio_floats.csv"
+  val pathToFileWithFloats = "src/test/resources/audio/csv/librispeech_asr_0.csv"
 
   val processedAudioFloats: DataFrame =
     spark.read

@@ -2,7 +2,10 @@ package com.johnsnowlabs.nlp
 
 import org.apache.spark.ml.param._
 
-/** TODO: Check this class again */
+/** Parameters to configure beam search text generation.
+  *
+  * TODO: Check Again
+  */
 trait HasGeneratorProperties {
   this: ParamsAndFeaturesWritable =>
 
@@ -225,3 +228,5 @@ trait HasGeneratorProperties {
   /** @group getParam */
   def getNReturnSequences: Int = $(nReturnSequences)
 }
+
+case class GenerationTokens(bos: Int, pad: Int, eos: Int, vocabSize: Int)

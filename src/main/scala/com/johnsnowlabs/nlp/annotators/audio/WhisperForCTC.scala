@@ -22,7 +22,7 @@ import com.johnsnowlabs.ml.util.LoadExternalModel.{loadJsonStringAsset, modelSan
 import com.johnsnowlabs.ml.util.ModelEngine
 import com.johnsnowlabs.nlp._
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.{Preprocessor, WhisperPreprocessor}
-import com.johnsnowlabs.nlp.serialization.MapFeature
+import com.johnsnowlabs.nlp.serialization.{MapFeature, StructFeature}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.param.{IntArrayParam, IntParam, Param}
 import org.apache.spark.ml.util.Identifiable
@@ -132,7 +132,8 @@ class WhisperForCTC(override val uid: String)
     with HasAudioFeatureProperties
     with WriteTensorflowModel
     with HasEngine
-    with HasGeneratorProperties {
+    with HasGeneratorProperties
+    with HasProtectedParams {
 
   override val outputAnnotatorType: AnnotatorType = AnnotatorType.DOCUMENT
 
@@ -184,6 +185,7 @@ class WhisperForCTC(override val uid: String)
     * @group param
     */
   val hopLength = new IntParam(this, "hopLength", "Hop Length for the window of the preprocessor")
+    .setProtected()
 
   /** @group setParam */
   def setHopLength(value: Int): this.type = set(hopLength, value)
@@ -195,7 +197,8 @@ class WhisperForCTC(override val uid: String)
     *
     * @group param
     */
-  val nFFT = new IntParam(this, "nFFT", "Number of frequencies to extract for FFT.")
+  val nFFT =
+    new IntParam(this, "nFFT", "Number of frequencies to extract for FFT.").setProtected()
 
   /** @group setParam */
   def setNFFT(value: Int): this.type = set(nFFT, value)
@@ -209,6 +212,7 @@ class WhisperForCTC(override val uid: String)
     */
   val nSamples =
     new IntParam(this, "nSamples", "Maximum number of samples to take from the audio.")
+      .setProtected()
 
   /** @group setParam */
   def setNSamples(value: Int): this.type = set(nSamples, value)
@@ -223,7 +227,7 @@ class WhisperForCTC(override val uid: String)
   val nMaxFrames = new IntParam(
     this,
     "nMaxFrames",
-    "Maximum number of frames to process (during preprocessing).")
+    "Maximum number of frames to process (during preprocessing).").setProtected()
 
   /** @group setParam */
   def setNMaxFrames(value: Int): this.type = set(nMaxFrames, value)
@@ -257,17 +261,23 @@ class WhisperForCTC(override val uid: String)
   def getConfigProtoBytes: Option[Array[Byte]] =
     get(this.configProtoBytes).map(_.map(_.toByte))
 
-  /** Vocabulary used to encode the words to ids
-    *
-    * @group param
-    */
+  /** Vocabulary used to encode the words to ids */
   val vocabulary: MapFeature[String, Int] = new MapFeature(this, "vocabulary").setProtected()
 
-  /** @group setParam */
   def setVocabulary(value: Map[String, Int]): this.type = set(vocabulary, value)
 
-  /** @group getParam */
   def getVocabulary: Map[String, Int] = $$(vocabulary)
+
+  val addedSpecialTokens: MapFeature[String, Int] =
+    new MapFeature(this, "addedSpecialTokens").setProtected()
+
+  def setAddedSpecialTokens(value: Map[String, Int]): this.type = set(addedSpecialTokens, value)
+
+  val generationTokens: StructFeature[GenerationTokens] =
+    new StructFeature(this, "generationConfig").setProtected()
+
+  def setGenerationConfig(value: GenerationTokens): this.type = set(generationTokens, value)
+  def getGenerationTokens: GenerationTokens = $$(generationTokens)
 
   setDefault(
     minOutputLength -> 0,
@@ -279,8 +289,9 @@ class WhisperForCTC(override val uid: String)
     repetitionPenalty -> 1.0,
     noRepeatNgramSize -> 0,
     ignoreTokenIds -> Array(),
-    batchSize -> 4,
-    beamSize -> 1)
+    batchSize -> 2,
+    beamSize -> 1,
+    nReturnSequences -> 1)
 
   private var _model: Option[Broadcast[Whisper]] = None
 
@@ -290,6 +301,7 @@ class WhisperForCTC(override val uid: String)
   /** @group setParam */
   def setModelIfNotSet(spark: SparkSession, tensorflow: TensorflowWrapper): this.type = {
     if (_model.isEmpty) {
+      // TODO: Use StructFeature?
       val preprocessor =
         new WhisperPreprocessor(
           getFeatureSize,
@@ -301,6 +313,8 @@ class WhisperForCTC(override val uid: String)
           getPaddingValue,
           getSamplingRate)
 
+      val GenerationTokens(bosTokenId, padTokenId, eosTokenId, vocabSize) = getGenerationTokens
+
       _model = Some(
         spark.sparkContext.broadcast(
           new Whisper(
@@ -308,7 +322,12 @@ class WhisperForCTC(override val uid: String)
             configProtoBytes = getConfigProtoBytes,
             signatures = getSignatures,
             preprocessor = preprocessor,
-            vocabulary = getVocabulary)))
+            vocabulary = getVocabulary,
+            addedSpecialTokens = $$(addedSpecialTokens),
+            bosTokenId = bosTokenId,
+            paddingTokenId = padTokenId,
+            eosTokenId = eosTokenId,
+            outputSize = vocabSize)))
     }
     this
   }
@@ -321,7 +340,8 @@ class WhisperForCTC(override val uid: String)
       getModelIfNotSet.tensorflowWrapper,
       "_whisper_ctc",
       WhisperForCTC.tfFile,
-      configProtoBytes = getConfigProtoBytes)
+      configProtoBytes = getConfigProtoBytes,
+      savedSignatures = getSignatures)
   }
 
   /** Takes audio annotations and produces transcribed document annotations.
@@ -377,13 +397,15 @@ trait ReadWhisperForCTCDLModel extends ReadTensorflowModel {
   override val tfFile: String = "whisper_ctc_tensorflow"
 
   def readTensorflow(instance: WhisperForCTC, path: String, spark: SparkSession): Unit = {
-    val tf = readTensorflowModel(path, spark, "_whisper_ctc_tf")
+    val tf = readTensorflowModel(path, spark, "_whisper_ctc_tf") // TODO: Failing here
     instance.setModelIfNotSet(spark, tf)
   }
 
   addReader(readTensorflow)
 
   def loadSavedModel(modelPath: String, spark: SparkSession): WhisperForCTC = {
+    implicit val formats = DefaultFormats // for json4s
+
     val (localModelPath, detectedEngine) = modelSanityCheck(modelPath)
 
     val ppJsonString: String = loadJsonStringAsset(localModelPath, "preprocessor_config.json")
@@ -413,34 +435,22 @@ trait ReadWhisperForCTCDLModel extends ReadTensorflowModel {
         .map {
           case (key, value) if value.isValidInt => (key, value.toInt)
           case _ =>
-            throw new Exception("Could not convert BigInt to Int while parsing vocab.json")
+            throw new IllegalArgumentException(
+              "Could not convert BigInt to Int while parsing vocab.json")
         }
     }
 
-    val modelConfig: Map[String, Any] =
-      parse(loadJsonStringAsset(localModelPath, "config.json")).values
-        .asInstanceOf[Map[String, Any]]
-
-    // TODO Should be moved to processor?
-    val generationConfig: Map[String, Any] = {
-      val configString = loadJsonStringAsset(localModelPath, "generation_config.json")
-      parse(configString).values.asInstanceOf[Map[String, Any]]
-    }
+    val modelConfig: JValue =
+      parse(loadJsonStringAsset(localModelPath, "config.json"))
 
     val suppressTokenIds: Array[Int] =
-      generationConfig.get("suppress_tokens") match {
-        case Some(value: List[BigInt]) => value.toArray.map(_.toInt)
-        case _ =>
-          throw new Exception(
-            "Could not extract suppress_tokens from generation config. Should be a List of integers.")
-      }
+      (modelConfig \ "suppress_tokens").extract[Array[Int]]
 
-    val maxOutputLength = generationConfig.get("max_length") match {
-      case Some(value: BigInt) => value.toInt
-      case _ =>
-        throw new Exception(
-          "Could not extract max_length from generation config. Should be integer.")
-    }
+    val maxOutputLength = (modelConfig \ "max_length").extract[Int]
+    val bosTokenId = (modelConfig \ "bos_token_id").extract[Int]
+    val eosTokenId = (modelConfig \ "eos_token_id").extract[Int]
+    val padTokenId = (modelConfig \ "pad_token_id").extract[Int]
+    val vocabSize = (modelConfig \ "vocab_size").extract[Int]
 
     val annotatorModel = new WhisperForCTC()
       .setHopLength(preprocessor.hop_length)
@@ -456,6 +466,8 @@ trait ReadWhisperForCTCDLModel extends ReadTensorflowModel {
       .setPaddingValue(preprocessor.padding_value)
       .setFeatureSize(preprocessor.feature_size)
       .setSamplingRate(preprocessor.sampling_rate)
+      .setAddedSpecialTokens(addedTokens)
+      .setGenerationConfig(GenerationTokens(bosTokenId, padTokenId, eosTokenId, vocabSize))
 
     //      .setTask() // TODO: default <startoftranscription>?
     //      .setMinOutputLength(0) // TODO: default 0?

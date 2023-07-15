@@ -32,7 +32,7 @@ class Wav2Vec2ForCTCTestSpec extends AnyFlatSpec {
   val spark: SparkSession = ResourceHelper.spark
   import spark.implicits._
 
-  val pathToFileWithFloats = "src/test/resources/audio/csv/audio_floats.csv"
+  val pathToFileWithFloats = "src/test/resources/audio/csv/librispeech_asr_0.csv"
 
   val audioAssembler: AudioAssembler = new AudioAssembler()
     .setInputCol("audio_content")
@@ -70,7 +70,7 @@ class Wav2Vec2ForCTCTestSpec extends AnyFlatSpec {
     val pipelineDF = pipeline.fit(processedAudioFloats).transform(processedAudioFloats)
 
     Benchmark.measure(iterations = 1, forcePrint = true, description = "Time to show result") {
-      pipelineDF.select("text").show(10, false)
+      pipelineDF.select("text").show(10, truncate = false)
     }
 
   }
@@ -103,8 +103,8 @@ class Wav2Vec2ForCTCTestSpec extends AnyFlatSpec {
 
     val pipelineDF = pipeline.fit(processedAudioFloats).transform(processedAudioFloats)
 
-    pipelineDF.select("document").show(10, false)
-    pipelineDF.select("token").show(10, false)
+    pipelineDF.select("document").show(10, truncate = false)
+    pipelineDF.select("token").show(10, truncate = false)
 
   }
 
@@ -201,7 +201,7 @@ class Wav2Vec2ForCTCTestSpec extends AnyFlatSpec {
       .fit(processedAudioFloats)
       .transform(processedAudioFloats)
       .select("text")
-      .show(10, false)
+      .show(10, truncate = false)
 
   }
 

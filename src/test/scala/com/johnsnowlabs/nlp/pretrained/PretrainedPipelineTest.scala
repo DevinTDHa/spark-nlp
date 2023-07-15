@@ -52,7 +52,7 @@ class PretrainedPipelineTest extends AnyFlatSpec {
   }
 
   it should " infer for audio input" taggedAs SlowTest in {
-    val pathToFileWithFloats = "src/test/resources/audio/csv/audio_floats.csv"
+    val pathToFileWithFloats = "src/test/resources/audio/csv/librispeech_asr_0.csv"
     val bufferedSource = scala.io.Source.fromFile(pathToFileWithFloats)
     val rawFloats = bufferedSource
       .getLines()

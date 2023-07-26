@@ -16,9 +16,17 @@
 
 package com.johnsnowlabs.ml.ai.util.Generation
 
-import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitProcess.{MinLengthLogitProcessor, NoRepeatNgramsLogitProcessor, RepetitionPenaltyLogitProcessor}
+import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitProcess.{
+  MinLengthLogitProcessor,
+  NoRepeatNgramsLogitProcessor,
+  RepetitionPenaltyLogitProcessor
+}
 import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitProcessorList
-import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitWarper.{TemperatureLogitWarper, TopKLogitWarper, TopPLogitWarper}
+import com.johnsnowlabs.ml.ai.util.Generation.Logit.LogitWarper.{
+  TemperatureLogitWarper,
+  TopKLogitWarper,
+  TopPLogitWarper
+}
 import com.johnsnowlabs.ml.ai.util.Generation.Search.{BeamScorer, BeamSearchScorer}
 import org.tensorflow.{Session, Tensor}
 
@@ -483,6 +491,12 @@ trait Generate {
       score
     }._2
 
+  def greedyGenerationFinished(
+      decoderIds: Seq[Array[Int]],
+      eosTokenId: Int,
+      maxOutputLength: Int): Boolean =
+    decoderIds.map(_.last).forall(_ == eosTokenId) || decoderIds.head.length == maxOutputLength
+
   /** Generates a Sequence of tokens with a greedy strategy.
     *
     * The token with the highest score will always be chosen.
@@ -528,12 +542,9 @@ trait Generate {
       logitProcessor: Option[LogitProcessorList],
       session: Session): Array[Array[Int]] = {
 
-    def generationFinished(decoderIds: Seq[Array[Int]]): Boolean =
-      decoderIds.map(_.last).forall(_ == eosTokenId) || decoderIds.head.length == maxOutputLength
-
     var generatedIds: Seq[Array[Int]] = decoderInputs
 
-    while (!generationFinished(generatedIds)) {
+    while (!greedyGenerationFinished(generatedIds, eosTokenId, maxOutputLength)) {
       val currentOutput: Array[Array[Float]] = getModelOutput(
         encoderInputIds,
         generatedIds,

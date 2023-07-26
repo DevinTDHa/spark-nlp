@@ -16,15 +16,36 @@
 
 package com.johnsnowlabs.ml.ai
 
+import ai.onnxruntime.{OnnxTensor, OrtEnvironment, OrtSession}
 import com.johnsnowlabs.ml.ai.util.Generation.Generate
+import com.johnsnowlabs.ml.onnx.OnnxWrapper
+import com.johnsnowlabs.ml.onnx.TensorResources.implicits._
+import com.johnsnowlabs.ml.tensorflow
+import com.johnsnowlabs.ml.tensorflow.TensorflowWrapper
 import com.johnsnowlabs.ml.tensorflow.sign.{ModelSignatureConstants, ModelSignatureManager}
-import com.johnsnowlabs.ml.tensorflow.{TensorResources, TensorflowWrapper}
+
+import scala.util.{Failure, Success, Using}
+//import com.johnsnowlabs.ml.util.SessionWrapper.implicits.{
+//  OnnxEngineSession,
+//  TensorflowEngineTensor
+//}
+//import com.johnsnowlabs.ml.util.TensorWrapper.implicits.{TensorflowEngineTensor, _}
+import com.johnsnowlabs.ml.util._
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.WhisperPreprocessor
 import com.johnsnowlabs.nlp.annotators.tokenizer.bpe.{SpecialTokens, WhisperTokenDecoder}
 import com.johnsnowlabs.nlp.{Annotation, AnnotationAudio, AnnotatorType}
 import org.tensorflow.{Session, Tensor}
 
 import scala.collection.JavaConverters._
+
+case class EncoderDecoderOnnxWrappers(
+    encoder: OnnxWrapper,
+//    encoderSignatures: Any, // TODO
+    decoder: OnnxWrapper,
+//    decoderSignatures: Any,
+    decoderWithPast: OnnxWrapper
+//    decoderWithPastSignatures: Any
+)
 
 /** Class representing a Whisper model. Used to call the model and generate tokens.
   *
@@ -42,7 +63,8 @@ import scala.collection.JavaConverters._
   *   Added special tokens
   */
 private[johnsnowlabs] class Whisper(
-    val tensorflowWrapper: TensorflowWrapper,
+    val tensorflowWrapper: Option[TensorflowWrapper],
+    val onnxWrappers: Option[EncoderDecoderOnnxWrappers],
     configProtoBytes: Option[Array[Byte]] = None,
     signatures: Option[Map[String, String]] = None,
     preprocessor: WhisperPreprocessor,
@@ -51,7 +73,7 @@ private[johnsnowlabs] class Whisper(
     bosTokenId: Int,
     paddingTokenId: Int,
     eosTokenId: Int,
-    outputSize: Int)
+    logitsSize: Int)
     extends Serializable
     with Generate {
 
@@ -73,23 +95,55 @@ private[johnsnowlabs] class Whisper(
   private val _tfWhisperSignatures: Map[String, String] =
     signatures.getOrElse(ModelSignatureManager.apply())
 
-  var tensorResources = new TensorResources()
+  val detectedEngine: String =
+    if (tensorflowWrapper.isDefined) TensorFlow.name
+    else if (onnxWrappers.isDefined) ONNX.name
+    else throw new IllegalArgumentException("No model engine defined.")
 
-  private val encoderInputOp: String = _tfWhisperSignatures.getOrElse(
-    ModelSignatureConstants.EncoderInputIds.key,
-    ModelSignatureConstants.EncoderInputIds.value)
-  private val encoderOutputOp: String = _tfWhisperSignatures.getOrElse(
-    ModelSignatureConstants.EncoderOutput.key,
-    ModelSignatureConstants.EncoderOutput.value)
-  private val decoderEncoderOutputsOp: String = _tfWhisperSignatures.getOrElse(
-    ModelSignatureConstants.DecoderEncoderInputIds.key,
-    ModelSignatureConstants.DecoderEncoderInputIds.value)
-  private val decoderInputIdsOp: String = _tfWhisperSignatures.getOrElse(
-    ModelSignatureConstants.DecoderInputIds.key,
-    ModelSignatureConstants.DecoderInputIds.value)
-  private val decoderOutputOp: String = _tfWhisperSignatures.getOrElse(
-    ModelSignatureConstants.LogitsOutput.key,
-    ModelSignatureConstants.LogitsOutput.value)
+  val tfTensorResources = new tensorflow.TensorResources()
+//  val onnxTensorResources = new onnx.TensorResources(OrtEnvironment.getEnvironment())
+  private object TfSignatures {
+    val encoderInputOp: String = _tfWhisperSignatures.getOrElse(
+      ModelSignatureConstants.EncoderInputIds.key,
+      ModelSignatureConstants.EncoderInputIds.value)
+    val encoderOutputOp: String = _tfWhisperSignatures.getOrElse(
+      ModelSignatureConstants.EncoderOutput.key,
+      ModelSignatureConstants.EncoderOutput.value)
+    val decoderEncoderOutputsOp: String = _tfWhisperSignatures.getOrElse(
+      ModelSignatureConstants.DecoderEncoderInputIds.key,
+      ModelSignatureConstants.DecoderEncoderInputIds.value)
+    val decoderInputIdsOp: String = _tfWhisperSignatures.getOrElse(
+      ModelSignatureConstants.DecoderInputIds.key,
+      ModelSignatureConstants.DecoderInputIds.value)
+    val decoderOutputOp: String = _tfWhisperSignatures.getOrElse(
+      ModelSignatureConstants.LogitsOutput.key,
+      ModelSignatureConstants.LogitsOutput.value)
+  }
+
+  private object OnnxSignatures {
+    val encoderInputKey: String = "input_features"
+    val encoderOutputKey = "last_hidden_state"
+    val encoderStateOutputKeys: Array[String] = Array(
+      "present.0.encoder.key",
+      "present.0.encoder.value",
+      "present.1.encoder.key",
+      "present.1.encoder.value",
+      "present.2.encoder.key",
+      "present.2.encoder.value",
+      "present.3.encoder.key",
+      "present.3.encoder.value")
+
+    val decoderOutputKey: String = "logits"
+    val decoderStateOutputKeys: Array[String] = Array(
+      "present.0.decoder.key",
+      "present.0.decoder.value",
+      "present.1.decoder.key",
+      "present.1.decoder.value",
+      "present.2.decoder.key",
+      "present.2.decoder.value",
+      "present.3.decoder.key",
+      "present.3.decoder.value")
+  }
 
   /** @param audios
     *   Sequence of audio floats
@@ -135,41 +189,86 @@ private[johnsnowlabs] class Whisper(
       randomSeed: Option[Long],
       ignoreTokenIds: Array[Int]): Seq[Annotation] = {
 
-    val session =
-      tensorflowWrapper.getTFSessionWithSignature(configProtoBytes, savedSignatures = signatures)
-
     val batchedAudio = audios.grouped(batchSize).toArray
+
     val batchDecodedIds =
       batchedAudio.flatMap { batch: Seq[AnnotationAudio] =>
         val featuresBatch = batch.map { case AnnotationAudio(_, rawFloats, _) =>
           preprocessor.extractFeatures(rawFloats)
         }.toArray
 
-        val encodedBatchFeatures: Tensor = encode(featuresBatch, session)
-
         // TODO: Add language or other special tokens at the start
         val batchDecoderStartIds = Array.fill(batchedAudio.length, 1)(bosTokenId)
 
-        // Generate the tokens
-        val tokenIds: Array[Array[Int]] = generate(
-          encodedBatchFeatures,
-          batchDecoderStartIds,
-          maxOutputLength,
-          minOutputLength,
-          doSample,
-          beamSize,
-          numReturnSequences,
-          temperature,
-          topK,
-          topP,
-          repetitionPenalty,
-          noRepeatNgramSize,
-          randomSeed,
-          ignoreTokenIds,
-          session)
+        val tokenIds: Array[Array[Int]] = detectedEngine match {
+          case TensorFlow.name =>
+            val session =
+              tensorflowWrapper.get
+                .getTFSessionWithSignature(configProtoBytes, savedSignatures = signatures)
 
-        tensorResources.clearTensors()
-        encodedBatchFeatures.close()
+            val encodedBatchFeatures: Tensor =
+              encode(featuresBatch, Some(session), None).asInstanceOf[Tensor]
+
+            // Generate the tokens
+            val tokenIds: Array[Array[Int]] = generate(
+              encodedBatchFeatures,
+              batchDecoderStartIds,
+              maxOutputLength,
+              minOutputLength,
+              doSample,
+              beamSize,
+              numReturnSequences,
+              temperature,
+              topK,
+              topP,
+              repetitionPenalty,
+              noRepeatNgramSize,
+              randomSeed,
+              ignoreTokenIds,
+              session)
+
+            tfTensorResources.clearTensors()
+            encodedBatchFeatures.close()
+
+            tokenIds
+          case ONNX.name =>
+            Using.Manager { use: Using.Manager =>
+              val (encoderSession, env) = onnxWrappers.get.encoder.getSession() match {
+                case (session, env) => (use(session), env)
+              }
+              val decoderSession = use(onnxWrappers.get.decoder.getSession()._1)
+              val decoderWithPastSession = use(onnxWrappers.get.decoderWithPast.getSession()._1)
+
+              val encodedBatchTensor: OnnxTensor =
+                encode(featuresBatch, None, Some((encoderSession, env))).asInstanceOf[OnnxTensor]
+
+              // TODO: Language?
+              val (logits, initEncoderStates, initDecoderStates) =
+                initOnnxDecoder(
+                  batchDecoderStartIds.map(_.map(_.toLong)),
+                  encodedBatchTensor,
+                  (decoderSession, env))
+
+              val batchInitRunTokenIds: Array[Array[Int]] =
+                logits.map { logitsArray =>
+                  Array(bosTokenId, argmax(logitsArray))
+                }
+
+              val tokenIds = generateGreedyOnnx(
+                batchInitRunTokenIds,
+                replaceStateKeys(initEncoderStates),
+                replaceStateKeys(initDecoderStates),
+                maxOutputLength,
+                minOutputLength,
+                (decoderWithPastSession, env))
+
+              tokenIds
+            } match {
+              case Success(tokenIds) => tokenIds
+              case Failure(exception) =>
+                throw new Exception(s"Could not generate tokens: ${exception.getMessage}")
+            }
+        }
 
         decode(tokenIds)
       }
@@ -207,31 +306,38 @@ private[johnsnowlabs] class Whisper(
     * @return
     *   Tensor with encoded features for each batch
     */
-  def encode(features: Array[Array[Array[Float]]], session: Session): Tensor = {
-    val runner: Session#Runner =
-      session.runner
 
-    val featuresTensors =
-      tensorResources.createTensor[Array[Array[Array[Float]]]](features)
+  def encode(
+      features: Array[Array[Array[Float]]],
+      tfSession: Option[Session],
+      onnxSession: Option[(OrtSession, OrtEnvironment)]): AutoCloseable = {
+    detectedEngine match {
+      case TensorFlow.name =>
+        val runner: Session#Runner =
+          tfSession.get.runner
 
-    val encoderOutputs: Tensor = runner
-      .feed(encoderInputOp, featuresTensors)
-      .fetch(encoderOutputOp)
-      .run()
-      .asScala
-      .head
+        val featuresTensors =
+          tfTensorResources.createTensor[Array[Array[Array[Float]]]](features)
 
-    encoderOutputs
-  }
+        val encoderOutputs: Tensor = runner
+          .feed(TfSignatures.encoderInputOp, featuresTensors)
+          .fetch(TfSignatures.encoderOutputOp)
+          .run()
+          .asScala
+          .head
 
-  override def getModelOutput(
-      encoderInputIds: Seq[Array[Int]],
-      decoderInputIds: Seq[Array[Int]],
-      decoderEncoderStateTensors: Tensor,
-      encoderAttentionMaskTensors: Tensor,
-      maxLength: Int,
-      session: Session): Array[Array[Float]] = {
-    getModelOutput(decoderEncoderStateTensors, decoderInputIds, maxLength, session)
+        encoderOutputs
+      case ONNX.name =>
+        val (session, env) = onnxSession.get
+        val encoderInputTensor = OnnxTensor.createTensor(env, features)
+
+        val encoderOutputs: OnnxTensor = session
+          .run(Map(OnnxSignatures.encoderInputKey -> encoderInputTensor).asJava)
+          .getOnnxTensor(OnnxSignatures.encoderOutputKey)
+
+        encoderInputTensor.close()
+        encoderOutputs
+    }
   }
 
   /** Get model output for a batch of input sequences
@@ -258,21 +364,21 @@ private[johnsnowlabs] class Whisper(
     val truncatedInputIds = decoderInputIds.map(_.slice(0, maxLength))
 
     val decoderInputIdsTensor: Tensor =
-      tensorResources.createTensor[Array[Array[Int]]](truncatedInputIds.toArray)
+      tfTensorResources.createTensor[Array[Array[Int]]](truncatedInputIds.toArray)
 
     val runner = session.runner
-      .feed(decoderInputIdsOp, decoderInputIdsTensor)
-      .feed(decoderEncoderOutputsOp, encodedInputsTensor)
-      .fetch(decoderOutputOp)
+      .feed(TfSignatures.decoderInputIdsOp, decoderInputIdsTensor)
+      .feed(TfSignatures.decoderEncoderOutputsOp, encodedInputsTensor)
+      .fetch(TfSignatures.decoderOutputOp)
 
     val decoderOuts = runner.run().asScala
-    val logitsRaw = TensorResources.extractFloats(decoderOuts.head)
+    val logitsRaw = tensorflow.TensorResources.extractFloats(decoderOuts.head)
     decoderOuts.foreach(_.close())
 
     val nextTokenLogits =
-      logitsRaw.grouped(outputSize).toArray // Should result in length batch size
+      logitsRaw.grouped(logitsSize).toArray // Should result in length batch size
 
-    tensorResources.clearTensors()
+    tfTensorResources.clearTensors()
     nextTokenLogits
   }
 
@@ -292,7 +398,6 @@ private[johnsnowlabs] class Whisper(
       randomSeed: Option[Long],
       ignoreTokenIds: Array[Int],
       session: Session): Array[Array[Int]] = {
-
     val dummyEncoderInput =
       Seq.fill(decoderInputIds.length)(Array.empty[Int]) // Needs to be size of batch
     val dummyEncoderAttentionMaskTensors: Tensor = null // not needed
@@ -305,7 +410,7 @@ private[johnsnowlabs] class Whisper(
         decoderInputs = decoderInputIds,
         maxOutputLength = maxOutputLength,
         minOutputLength = minOutputLength,
-        vocabSize = outputSize,
+        vocabSize = logitsSize,
         eosTokenId = eosTokenId,
         paddingTokenId = paddingTokenId,
         ignoreTokenIds = ignoreTokenIds,
@@ -328,7 +433,7 @@ private[johnsnowlabs] class Whisper(
         topP = topP,
         repetitionPenalty = repetitionPenalty,
         noRepeatNgramSize = noRepeatNgramSize,
-        vocabSize = outputSize,
+        vocabSize = logitsSize,
         eosTokenId = eosTokenId,
         paddingTokenId = paddingTokenId,
         randomSeed = randomSeed,
@@ -337,9 +442,129 @@ private[johnsnowlabs] class Whisper(
         applySoftmax = false)
   }
 
+  def getModelOutput(
+      encoderInputIds: Seq[Array[Int]],
+      decoderInputIds: Seq[Array[Int]],
+      decoderEncoderStateTensors: Tensor,
+      encoderAttentionMaskTensors: Tensor,
+      maxLength: Int,
+      session: Session): Array[Array[Float]] = {
+    getModelOutput(decoderEncoderStateTensors, decoderInputIds, maxLength, session)
+  }
+
+  private def initOnnxDecoder(
+      decoderInputIds: Array[Array[Long]],
+      encoderOutputs: OnnxTensor,
+      onnxSession: (OrtSession, OrtEnvironment))
+      : (Array[Array[Float]], Map[String, OnnxTensor], Map[String, OnnxTensor]) = {
+
+    val (sessionRunner, env) = onnxSession
+
+    val decoderInputTensor: OnnxTensor = OnnxTensor.createTensor(env, decoderInputIds)
+
+    val decoderInputs =
+      Map("input_ids" -> decoderInputTensor, "encoder_hidden_states" -> encoderOutputs).asJava
+
+    val sessionOutput = sessionRunner.run(decoderInputs)
+    decoderInputTensor.close()
+
+    val logits =
+      sessionOutput.getFloatArray(OnnxSignatures.decoderOutputKey).grouped(logitsSize).toArray
+
+    val encoderStates =
+      sessionOutput.getOnnxTensors(OnnxSignatures.encoderStateOutputKeys)
+
+    val decoderStates =
+      sessionOutput.getOnnxTensors(OnnxSignatures.decoderStateOutputKeys)
+
+    (logits, encoderStates, decoderStates)
+  }
+
+  private def getOnnxDecoderOutput(
+      decoderInputIds: Array[Array[Int]],
+      pastEncoderStateTensors: Map[String, OnnxTensor],
+      pastDecoderStateTensors: Map[String, OnnxTensor],
+      onnxSession: (OrtSession, OrtEnvironment))
+      : (Array[Array[Float]], Map[String, OnnxTensor]) = {
+
+    val (session, env) = onnxSession
+
+    // Only requires the last generated token as Long
+    val lastTokens: Array[Array[Long]] =
+      decoderInputIds.map { tokenIds =>
+        Array(tokenIds.last.toLong)
+      }
+
+    val lastTokensTensor: OnnxTensor =
+      OnnxTensor.createTensor(env, lastTokens)
+    val decoderWithPastInputs: java.util.Map[String, OnnxTensor] =
+      (Map(
+        "input_ids" -> lastTokensTensor) ++ pastEncoderStateTensors ++ pastDecoderStateTensors).asJava
+
+    val sessionOutput = session.run(decoderWithPastInputs)
+    val logits = sessionOutput.getFloatArray(OnnxSignatures.decoderOutputKey)
+
+    val updatedDecoderStates =
+      sessionOutput.getOnnxTensors(OnnxSignatures.decoderStateOutputKeys)
+
+    lastTokensTensor.close()
+
+    val batchLogits = logits.grouped(logitsSize).toArray
+    (batchLogits, updatedDecoderStates)
+  }
+
+  /** Generates Tokens in a greedy fashion.
+    *
+    * @param initInputIds
+    *   Last Input ids for each batch after initializing the decoder
+    * @param encoderStateTensors
+    *   Map of each encoder state name and its tensor
+    * @param decoderStateTensors
+    *   Map of each decoder state name and its tensor
+    * @param maxOutputLength
+    *   Max output length
+    * @param minOutputLength
+    *   min output length
+    * @return
+    */
+  private def generateGreedyOnnx(
+      initInputIds: Array[Array[Int]],
+      encoderStateTensors: Map[String, OnnxTensor],
+      decoderStateTensors: Map[String, OnnxTensor],
+      maxOutputLength: Int,
+      minOutputLength: Int,
+      onnxSession: (OrtSession, OrtEnvironment)): Array[Array[Int]] = {
+
+    var generatedIds: Array[Array[Int]] = initInputIds
+    var currentDecoderStateTensors = decoderStateTensors
+
+    while (!greedyGenerationFinished(generatedIds, eosTokenId, maxOutputLength)) {
+
+      val (batchLogits: Array[Array[Float]], updatedDecoderStates: Map[String, OnnxTensor]) =
+        getOnnxDecoderOutput(
+          generatedIds,
+          encoderStateTensors,
+          currentDecoderStateTensors,
+          onnxSession)
+
+      currentDecoderStateTensors.foreach { case (_, tensor) =>
+        tensor.close()
+      } // TODO: Use Result?
+      currentDecoderStateTensors = replaceStateKeys(updatedDecoderStates)
+
+      val nextTokenIds: Array[Int] = batchLogits.map(argmax)
+
+      generatedIds =
+        generatedIds.zip(nextTokenIds).map { case (currentIds: Array[Int], nextId: Int) =>
+          currentIds ++ Array(nextId)
+        }
+    }
+
+    generatedIds
+  }
+
   private def sessionWarmup(): Unit = {
     val dummyInput = Seq(AnnotationAudio(AnnotatorType.AUDIO, Array.ofDim(1), Map.empty))
-
     generateFromAudio(
       dummyInput,
       batchSize = 2,
@@ -356,4 +581,9 @@ private[johnsnowlabs] class Whisper(
       randomSeed = None,
       ignoreTokenIds = Array.empty)
   }
+
+  def replaceStateKeys(outputs: Map[String, OnnxTensor]): Map[String, OnnxTensor] =
+    outputs.map { case (key, t) =>
+      (key.replace("present", "past_key_values"), t)
+    }
 }

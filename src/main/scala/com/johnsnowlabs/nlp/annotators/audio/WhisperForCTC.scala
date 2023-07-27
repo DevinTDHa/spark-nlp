@@ -17,7 +17,8 @@
 package com.johnsnowlabs.nlp.annotators.audio
 
 import com.johnsnowlabs.ml.ai.Whisper
-import com.johnsnowlabs.ml.onnx.OnnxWrapper
+import com.johnsnowlabs.ml.onnx.OnnxWrapper.EncoderDecoderWrappers
+import com.johnsnowlabs.ml.onnx.{OnnxWrapper, ReadOnnxModel, WriteOnnxModel}
 import com.johnsnowlabs.ml.tensorflow.{
   ReadTensorflowModel,
   TensorflowWrapper,
@@ -28,7 +29,7 @@ import com.johnsnowlabs.ml.util.LoadExternalModel.{
   modelSanityCheck,
   notSupportedEngineError
 }
-import com.johnsnowlabs.ml.util.{ModelEngine, ONNX, TensorFlow}
+import com.johnsnowlabs.ml.util.{ONNX, TensorFlow}
 import com.johnsnowlabs.nlp._
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.{Preprocessor, WhisperPreprocessor}
 import com.johnsnowlabs.nlp.serialization.{MapFeature, StructFeature}
@@ -140,6 +141,7 @@ class WhisperForCTC(override val uid: String)
     with HasBatchedAnnotateAudio[Wav2Vec2ForCTC]
     with HasAudioFeatureProperties
     with WriteTensorflowModel
+    with WriteOnnxModel
     with HasEngine
     with HasGeneratorProperties
     with HasProtectedParams {
@@ -156,7 +158,8 @@ class WhisperForCTC(override val uid: String)
     */
   def this() = this(Identifiable.randomUID("WhisperForCTC"))
 
-  /** Optional language to set for the transcription. TODO
+  /** Optional language to set for the transcription. The imported model needs to support multiple
+    * languages. TODO: Implement and add flag to know if it is multi-lang.
     * @group param
     */
   val language =
@@ -174,6 +177,18 @@ class WhisperForCTC(override val uid: String)
   /** @group getParam */
   def getLanguage: Option[String] = get(this.language)
 
+  /** Sets the task for the audio. Either `translate` or `transcribe`.
+    *
+    * @group setParam
+    */
+  override def setTask(value: String): this.type = {
+    require(
+      value == "translate" || value == "transcribe",
+      "Task should be either 'translate' or 'transcribe'")
+    set(task, value)
+    this
+  }
+
   /** It contains TF model signatures for the laded saved model
     *
     * @group param
@@ -189,6 +204,8 @@ class WhisperForCTC(override val uid: String)
 
   /** @group getParam */
   def getSignatures: Option[Map[String, String]] = get(this.signatures)
+
+  // TODO: Consolidate preprocessor into Feature.
 
   /** Hop Length for the window of the preprocessor
     * @group param
@@ -309,7 +326,10 @@ class WhisperForCTC(override val uid: String)
   def getModelIfNotSet: Whisper = _model.get.value
 
   /** @group setParam */
-  def setModelIfNotSet(spark: SparkSession, tensorflow: TensorflowWrapper): this.type = {
+  def setModelIfNotSet(
+      spark: SparkSession,
+      tensorflowWrapper: Option[TensorflowWrapper],
+      onnxWrappers: Option[EncoderDecoderWrappers]): this.type = {
     if (_model.isEmpty) {
       // TODO: Use StructFeature?
       val preprocessor =
@@ -328,7 +348,8 @@ class WhisperForCTC(override val uid: String)
       _model = Some(
         spark.sparkContext.broadcast(
           new Whisper(
-            tensorflow,
+            tensorflowWrapper,
+            onnxWrappers,
             configProtoBytes = getConfigProtoBytes,
             signatures = getSignatures,
             preprocessor = preprocessor,
@@ -337,21 +358,36 @@ class WhisperForCTC(override val uid: String)
             bosTokenId = bosTokenId,
             paddingTokenId = padTokenId,
             eosTokenId = eosTokenId,
-            outputSize = vocabSize)))
+            logitsSize = vocabSize)))
     }
     this
   }
 
   override def onWrite(path: String, spark: SparkSession): Unit = {
     super.onWrite(path, spark)
-    writeTensorflowModelV2(
-      path,
-      spark,
-      getModelIfNotSet.tensorflowWrapper,
-      "_whisper_ctc",
-      WhisperForCTC.tfFile,
-      configProtoBytes = getConfigProtoBytes,
-      savedSignatures = getSignatures)
+    val suffix = "_whisper_ctc"
+
+    getEngine match {
+      case TensorFlow.name =>
+        writeTensorflowModelV2(
+          path,
+          spark,
+          getModelIfNotSet.tensorflowWrapper.get,
+          suffix,
+          WhisperForCTC.tfFile,
+          configProtoBytes = getConfigProtoBytes,
+          savedSignatures = getSignatures)
+      case ONNX.name =>
+        val wrappers = getModelIfNotSet.onnxWrappers.get
+        ???
+//        writeOnnxModels(
+//          path,
+//          spark,
+//          Seq(wrappers.encoder, wrappers.decoder, wrappers.decoderWithPast),
+//          suffix,
+//          WhisperForCTC.onnxFile)
+    }
+
   }
 
   /** Takes audio annotations and produces transcribed document annotations.
@@ -401,22 +437,36 @@ trait ReadablePretrainedWhisperForCTCModel
     super.pretrained(name, lang, remoteLoc)
 }
 
-trait ReadWhisperForCTCDLModel extends ReadTensorflowModel {
+trait ReadWhisperForCTCDLModel extends ReadTensorflowModel with ReadOnnxModel {
   this: ParamsAndFeaturesReadable[WhisperForCTC] =>
 
   override val tfFile: String = "whisper_ctc_tensorflow"
+  override val onnxFile: String = "whisper_ctc_onnx"
 
-  def readTensorflow(instance: WhisperForCTC, path: String, spark: SparkSession): Unit = {
-    val tf = readTensorflowModel(path, spark, "_whisper_ctc_tf") // TODO: Failing here
-    instance.setModelIfNotSet(spark, tf)
+  def readModel(instance: WhisperForCTC, path: String, spark: SparkSession): Unit = {
+
+    instance.getEngine match {
+      case TensorFlow.name =>
+        val tfWrapper = readTensorflowModel(path, spark, "_whisper_tf")
+        instance.setModelIfNotSet(spark, Some(tfWrapper), None)
+
+      case ONNX.name =>
+        ???
+//        val onnxWrapper =
+//          readOnnxModel(path, spark, "_whisper_onnx", zipped = true, useBundle = false, None)
+//        instance.setModelIfNotSet(spark, None, Some(onnxWrapper))
+      case _ =>
+        throw new Exception(notSupportedEngineError)
+    }
   }
 
-  addReader(readTensorflow)
+  addReader(readModel)
 
   def loadSavedModel(modelPath: String, spark: SparkSession): WhisperForCTC = {
     implicit val formats: DefaultFormats.type = DefaultFormats // for json4s
 
-    val (localModelPath, detectedEngine) = modelSanityCheck(modelPath)
+    val (localModelPath, detectedEngine) =
+      modelSanityCheck(modelPath, isEncoderDecoder = true, withPast = true)
 
     val ppJsonString: String = loadJsonStringAsset(localModelPath, "preprocessor_config.json")
 
@@ -508,12 +558,37 @@ trait ReadWhisperForCTCDLModel extends ReadTensorflowModel {
           */
         annotatorModel
           .setSignatures(_signatures)
-          .setModelIfNotSet(spark, tfWrapper)
+          .setModelIfNotSet(spark, Some(tfWrapper), None)
 
-      case ONNX.name => ???
-//        val onnxWrapper = OnnxWrapper.read(localModelPath, zipped = false, useBundle = true)
-//        annotatorModel
-//          .setModelIfNotSet(spark, None, Some(onnxWrapper))
+      case ONNX.name =>
+        val onnxWrapperEncoder =
+          OnnxWrapper.read(
+            modelPath,
+            zipped = false,
+            useBundle = true,
+            modelName = "encoder_model")
+
+        val onnxWrapperDecoder =
+          OnnxWrapper.read(
+            modelPath,
+            zipped = false,
+            useBundle = true,
+            modelName = "decoder_model")
+
+        val onnxWrapperDecoderWithPast =
+          OnnxWrapper.read(
+            modelPath,
+            zipped = false,
+            useBundle = true,
+            modelName = "decoder_with_past_model")
+
+        val onnxWrappers = EncoderDecoderWrappers(
+          onnxWrapperEncoder,
+          onnxWrapperDecoder,
+          onnxWrapperDecoderWithPast)
+
+        annotatorModel
+          .setModelIfNotSet(spark, None, Some(onnxWrappers))
 
       case _ =>
         throw new Exception(notSupportedEngineError)

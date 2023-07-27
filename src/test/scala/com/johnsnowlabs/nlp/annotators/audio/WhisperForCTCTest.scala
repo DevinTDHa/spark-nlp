@@ -16,7 +16,7 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   behavior of "WhisperForCTCTest"
 
-  val pathToFileWithFloats = "src/test/resources/audio/csv/librispeech_asr_0.csv"
+  val pathToFileWithFloats = "src/test/resources/audio/txt/librispeech_asr_0.txt"
 
   val audioAssembler: AudioAssembler = new AudioAssembler()
     .setInputCol("audio_content")
@@ -30,12 +30,20 @@ class WhisperForCTCTest extends AnyFlatSpec {
 
   // Needs to be added manually
   val modelPath =
-    "/home/ducha/spark-nlp/dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en_sepV2/"
+//    "/home/ducha/spark-nlp/dev-things/hf_exports/whisper/exported/openai/whisper-tiny.en_sepV3/"
+//
+//  val onnxPath =
+    "/home/ducha/Workspace/JSL/spark-nlp-dev-things/hf_exports/whisper/onnx/exported_onnx/openai/whisper-tiny.en"
 
   lazy val model: WhisperForCTC = WhisperForCTC
     .loadSavedModel(modelPath, ResourceHelper.spark)
     .setInputCols("audio_assembler")
     .setOutputCol("document")
+
+//  lazy val onnxModel: WhisperForCTC = WhisperForCTC
+//    .loadSavedModel(onnxPath, ResourceHelper.spark)
+//    .setInputCols("audio_assembler")
+//    .setOutputCol("document")
 
   it should "loadSavedModel" taggedAs SlowTest in {
     val whisper = WhisperForCTC.loadSavedModel(modelPath, ResourceHelper.spark)
@@ -146,6 +154,33 @@ class WhisperForCTCTest extends AnyFlatSpec {
     }
 
   }
+
+  it should "save bundle" taggedAs SlowTest in {
+
+//    val bundle: SavedModelBundle = SavedModelBundle.load(modelPath)
+//    val exporter = SavedModelBundle.exporter("test-export-whisper")
+//    bundle.functions().forEach { f =>
+//      println(f)
+//      exporter.withFunction(f)
+//      exporter.withFunction()
+//    }
+//
+//    exporter.export()
+
+//    val signatures = model.getSignatures
+//    val session =
+//      model.getModelIfNotSet.tensorflowWrapper.getTFSessionWithSignature(savedSignatures =
+//        signatures)
+//
+//    SavedModelBundle
+//      .exporter("export_whisper_test")
+//      .withSession(session)
+//      .withFunctions()
+//      .export()
+
+  }
+
+  it should "load" taggedAs SlowTest in {}
 
   it should "be serializable" taggedAs SlowTest in {
 

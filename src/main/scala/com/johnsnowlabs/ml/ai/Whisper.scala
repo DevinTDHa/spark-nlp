@@ -18,13 +18,12 @@ package com.johnsnowlabs.ml.ai
 
 import ai.onnxruntime.{OnnxTensor, OrtEnvironment, OrtSession}
 import com.johnsnowlabs.ml.ai.util.Generation.Generate
-import com.johnsnowlabs.ml.onnx.OnnxWrapper
+import com.johnsnowlabs.ml.onnx.OnnxWrapper.EncoderDecoderWrappers
 import com.johnsnowlabs.ml.onnx.TensorResources.implicits._
 import com.johnsnowlabs.ml.tensorflow
 import com.johnsnowlabs.ml.tensorflow.TensorflowWrapper
 import com.johnsnowlabs.ml.tensorflow.sign.{ModelSignatureConstants, ModelSignatureManager}
-
-import scala.util.{Failure, Success, Using}
+import org.slf4j.LoggerFactory
 //import com.johnsnowlabs.ml.util.SessionWrapper.implicits.{
 //  OnnxEngineSession,
 //  TensorflowEngineTensor
@@ -37,15 +36,6 @@ import com.johnsnowlabs.nlp.{Annotation, AnnotationAudio, AnnotatorType}
 import org.tensorflow.{Session, Tensor}
 
 import scala.collection.JavaConverters._
-
-case class EncoderDecoderOnnxWrappers(
-    encoder: OnnxWrapper,
-//    encoderSignatures: Any, // TODO
-    decoder: OnnxWrapper,
-//    decoderSignatures: Any,
-    decoderWithPast: OnnxWrapper
-//    decoderWithPastSignatures: Any
-)
 
 /** Class representing a Whisper model. Used to call the model and generate tokens.
   *
@@ -64,7 +54,7 @@ case class EncoderDecoderOnnxWrappers(
   */
 private[johnsnowlabs] class Whisper(
     val tensorflowWrapper: Option[TensorflowWrapper],
-    val onnxWrappers: Option[EncoderDecoderOnnxWrappers],
+    val onnxWrappers: Option[EncoderDecoderWrappers],
     configProtoBytes: Option[Array[Byte]] = None,
     signatures: Option[Map[String, String]] = None,
     preprocessor: WhisperPreprocessor,
@@ -76,6 +66,8 @@ private[johnsnowlabs] class Whisper(
     logitsSize: Int)
     extends Serializable
     with Generate {
+
+  private val logger = LoggerFactory.getLogger(this.getClass.getName)
 
   private val vocabWithAddedTokens: Map[String, Int] = vocabulary ++ addedSpecialTokens
 
@@ -120,6 +112,7 @@ private[johnsnowlabs] class Whisper(
       ModelSignatureConstants.LogitsOutput.value)
   }
 
+  /** TODO: Maybe we don't need static keys like this and can get it from the session */
   private object OnnxSignatures {
     val encoderInputKey: String = "input_features"
     val encoderOutputKey = "last_hidden_state"
@@ -232,42 +225,40 @@ private[johnsnowlabs] class Whisper(
 
             tokenIds
           case ONNX.name =>
-            Using.Manager { use: Using.Manager =>
-              val (encoderSession, env) = onnxWrappers.get.encoder.getSession() match {
-                case (session, env) => (use(session), env)
+            if (beamSize > 1)
+              logger.warn(
+                "Currently the Whisper ONNX model only supports greedy search. Will default to this behavior.")
+
+            val (encoderSession, env) = onnxWrappers.get.encoder.getSession()
+            val decoderSession = onnxWrappers.get.decoder.getSession()._1
+            val decoderWithPastSession = onnxWrappers.get.decoderWithPast.getSession()._1
+
+            val encodedBatchTensor: OnnxTensor =
+              encode(featuresBatch, None, Some((encoderSession, env))).asInstanceOf[OnnxTensor]
+
+            // TODO: Language?
+            val (logits, initEncoderStates, initDecoderStates) =
+              initOnnxDecoder(
+                batchDecoderStartIds.map(_.map(_.toLong)),
+                encodedBatchTensor,
+                (decoderSession, env))
+
+            encodedBatchTensor.close()
+
+            val batchInitRunTokenIds: Array[Array[Int]] =
+              logits.map { logitsArray =>
+                Array(bosTokenId, argmax(logitsArray))
               }
-              val decoderSession = use(onnxWrappers.get.decoder.getSession()._1)
-              val decoderWithPastSession = use(onnxWrappers.get.decoderWithPast.getSession()._1)
 
-              val encodedBatchTensor: OnnxTensor =
-                encode(featuresBatch, None, Some((encoderSession, env))).asInstanceOf[OnnxTensor]
+            val tokenIds = generateGreedyOnnx(
+              batchInitRunTokenIds,
+              replaceStateKeys(initEncoderStates),
+              replaceStateKeys(initDecoderStates),
+              maxOutputLength,
+              minOutputLength,
+              (decoderWithPastSession, env))
 
-              // TODO: Language?
-              val (logits, initEncoderStates, initDecoderStates) =
-                initOnnxDecoder(
-                  batchDecoderStartIds.map(_.map(_.toLong)),
-                  encodedBatchTensor,
-                  (decoderSession, env))
-
-              val batchInitRunTokenIds: Array[Array[Int]] =
-                logits.map { logitsArray =>
-                  Array(bosTokenId, argmax(logitsArray))
-                }
-
-              val tokenIds = generateGreedyOnnx(
-                batchInitRunTokenIds,
-                replaceStateKeys(initEncoderStates),
-                replaceStateKeys(initDecoderStates),
-                maxOutputLength,
-                minOutputLength,
-                (decoderWithPastSession, env))
-
-              tokenIds
-            } match {
-              case Success(tokenIds) => tokenIds
-              case Failure(exception) =>
-                throw new Exception(s"Could not generate tokens: ${exception.getMessage}")
-            }
+            tokenIds
         }
 
         decode(tokenIds)
@@ -549,7 +540,7 @@ private[johnsnowlabs] class Whisper(
 
       currentDecoderStateTensors.foreach { case (_, tensor) =>
         tensor.close()
-      } // TODO: Use Result?
+      } // TODO: Use OrtSession.Result type instead?
       currentDecoderStateTensors = replaceStateKeys(updatedDecoderStates)
 
       val nextTokenIds: Array[Int] = batchLogits.map(argmax)

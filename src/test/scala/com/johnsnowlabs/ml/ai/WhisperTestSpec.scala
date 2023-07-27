@@ -2,6 +2,8 @@ package com.johnsnowlabs.ml.ai
 
 import ai.onnxruntime.{OnnxTensor, OrtSession}
 import com.johnsnowlabs.ml.onnx.OnnxWrapper
+import com.johnsnowlabs.ml.onnx.OnnxWrapper.EncoderDecoderWrappers
+import com.johnsnowlabs.ml.onnx.TensorResources.implicits._
 import com.johnsnowlabs.ml.tensorflow.{TensorResources, TensorflowWrapper}
 import com.johnsnowlabs.ml.util.LoadExternalModel._
 import com.johnsnowlabs.nlp.annotators.audio.feature_extractor.{Preprocessor, WhisperPreprocessor}
@@ -11,7 +13,6 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.tensorflow.{Session, Tensor}
-import com.johnsnowlabs.ml.onnx.TensorResources.implicits._
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Using}
@@ -111,7 +112,7 @@ class WhisperTestSpec extends AnyFlatSpec {
   lazy val encodedBatchFeatures: Tensor =
     whisperModelTf.encode(batchFeatures, Some(tfSession), None).asInstanceOf[Tensor]
 
-  lazy val whisperModelOnnx = {
+  lazy val whisperModelOnnx: Whisper = {
     val onnxPath =
       "/home/ducha/Workspace/JSL/spark-nlp-dev-things/hf_exports/whisper/onnx/exported_onnx/openai/whisper-tiny.en"
 
@@ -128,10 +129,8 @@ class WhisperTestSpec extends AnyFlatSpec {
         useBundle = true,
         modelName = "decoder_with_past_model")
 
-    val onnxWrappers = EncoderDecoderOnnxWrappers(
-      onnxWrapperEncoder,
-      onnxWrapperDecoder,
-      onnxWrapperDecoderWithPast)
+    val onnxWrappers =
+      EncoderDecoderWrappers(onnxWrapperEncoder, onnxWrapperDecoder, onnxWrapperDecoderWithPast)
 
     new Whisper(
       tensorflowWrapper = None,
@@ -353,10 +352,8 @@ class WhisperTestSpec extends AnyFlatSpec {
         useBundle = true,
         modelName = "decoder_with_past_model")
 
-    val onnxWrappers = EncoderDecoderOnnxWrappers(
-      onnxWrapperEncoder,
-      onnxWrapperDecoder,
-      onnxWrapperDecoderWithPast)
+    val onnxWrappers =
+      EncoderDecoderWrappers(onnxWrapperEncoder, onnxWrapperDecoder, onnxWrapperDecoderWithPast)
 
     def replaceStateKeys(outputs: Map[String, OnnxTensor]): Map[String, OnnxTensor] =
       outputs.map { case (key, t) =>

@@ -127,5 +127,8 @@ object Dependencies {
   val azureIdentity = "com.azure" % "azure-identity" % azureIdentityVersion % Provided
   val azureStorage = "com.azure" % "azure-storage-blob" % "12.22.2" % Provided
 
+  val llamaCppVersion = "2.3.5"
+  val llamaCpp = "de.kherud" % "llama" % llamaCppVersion
+
   /** ------- Dependencies end  ------- */
 }

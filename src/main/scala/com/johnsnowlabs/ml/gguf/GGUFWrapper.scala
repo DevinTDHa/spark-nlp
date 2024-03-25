@@ -13,33 +13,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.johnsnowlabs.ml.gguf
+
 import com.johnsnowlabs.util.{FileHelper, ZipArchiveUtil}
-import de.kherud.llama.LlamaModel
-import org.apache.commons.io.FileUtils
+import de.kherud.llama.{LlamaModel, ModelParameters}
+import org.apache.spark.SparkFiles
+import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.io._
+import java.io.File
 import java.nio.file.{Files, Paths}
 import java.util.UUID
 
-private[johnsnowlabs] class GGUFWrapper(var ggufModel: Array[Byte])
-    extends Serializable
-    with AutoCloseable {
+class GGUFWrapper(var modelFileName: String, var modelFolder: String) extends Serializable {
 
   /** For Deserialization */
   def this() = {
-    this(null)
+    this(null, null)
   }
 
   // Important for serialization on none-kyro serializers
   @transient private var llamaModel: LlamaModel = _
 
-  def getSession: LlamaModel =
+  def getSession(modelParameters: ModelParameters): LlamaModel =
     this.synchronized {
       if (llamaModel == null) {
-        llamaModel = GGUFWrapper.withSafeGGUFModelLoader(ggufModel)
+        // TODO: Validate when modelFileName or tmpFolder is None??
+        val modelFilePath = SparkFiles.get(modelFileName)
+
+        if (Paths.get(modelFilePath).toFile.exists())
+          llamaModel = GGUFWrapper.withSafeGGUFModelLoader(Some(modelFilePath), modelParameters)
+        else
+          throw new IllegalStateException(
+            s"Model file $modelFileName does not exist in SparkFiles.")
       }
       llamaModel
     }
@@ -47,26 +53,18 @@ private[johnsnowlabs] class GGUFWrapper(var ggufModel: Array[Byte])
   def saveToFile(file: String, zip: Boolean = true): Unit = {
     // 1. Create tmp director
     val tmpFolder = Files
-      .createTempDirectory(UUID.randomUUID().toString.takeRight(12) + "_gguf")
+      .createTempDirectory(UUID.randomUUID().toString.takeRight(12) + "_onnx")
       .toAbsolutePath
       .toString
 
-    // 2. Save gguf model
-    val fileName = Paths.get(file).getFileName.toString
-    val ggufFile = Paths
-      .get(tmpFolder, fileName)
-      .toString
+    val tmpModelFilePath = SparkFiles.get(modelFileName)
+    // 2. Zip folder
+    if (zip) ZipArchiveUtil.zip(tmpModelFilePath, file)
 
-    FileUtils.writeByteArrayToFile(new File(ggufFile), ggufModel)
-    // 4. Zip folder
-    if (zip) ZipArchiveUtil.zip(tmpFolder, file)
-
-    // 5. Remove tmp directory
+    // 3. Remove tmp directory
     FileHelper.delete(tmpFolder)
   }
 
-  // TODO: When to do this actually
-  override def close(): Unit = if (llamaModel != null) llamaModel.close()
 }
 
 /** Companion object */
@@ -74,22 +72,26 @@ object GGUFWrapper {
   private[GGUFWrapper] val logger: Logger = LoggerFactory.getLogger("GGUFWrapper")
 
   // TODO: make sure this.synchronized is needed or it's not a bottleneck
-  private def withSafeGGUFModelLoader(ggufModel: Array[Byte]): LlamaModel =
+  private def withSafeGGUFModelLoader(
+      ggufModelPath: Option[String] = None,
+      modelParameters: ModelParameters): LlamaModel =
     this.synchronized {
-      // TODO: tmp solution, maybe we can load the model directly from addFile or from bytes
-      val tmpFile = Files
-        .createTempFile(UUID.randomUUID().toString.takeRight(12), ".gguf")
-
-      // write the array of bytes to file
-      Files.write(tmpFile, ggufModel)
-
-      // TODO: Add model parameters
-      new LlamaModel(tmpFile.toAbsolutePath.toString)
+      if (ggufModelPath.isDefined) {
+        new LlamaModel(ggufModelPath.get, modelParameters) // TODO: Model parameters
+      } else {
+        throw new UnsupportedOperationException("ggufModelPath not defined")
+      }
     }
 
-  def read(modelPath: String): GGUFWrapper = {
-    // TODO Does not work for large files...
-    val ggufModel = Files.readAllBytes(Paths.get(modelPath))
-    new GGUFWrapper(ggufModel)
+  def read(sparkSession: SparkSession, modelPath: String): GGUFWrapper = {
+    // TODO Better Sanity Check
+    val modelFile = new File(modelPath)
+    val modelFileExist: Boolean = modelFile.exists()
+
+    if (modelFileExist) {
+      sparkSession.sparkContext.addFile(modelPath)
+    } else throw new IllegalArgumentException(s"Model file $modelPath does not exist")
+
+    new GGUFWrapper(modelFile.getName, modelFile.getParent)
   }
 }

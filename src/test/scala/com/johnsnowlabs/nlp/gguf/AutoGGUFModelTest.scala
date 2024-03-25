@@ -17,13 +17,16 @@ class AutoGGUFModelTest extends AnyFlatSpec {
     .setInputCol("text")
     .setOutputCol("document")
 
-  lazy val model = AutoGGUFModel.loadSavedModel(modelPath, ResourceHelper.spark)
+  lazy val model = AutoGGUFModel
+    .loadSavedModel(modelPath, ResourceHelper.spark)
+    .setInputCols("document")
+    .setOutputCol("completions")
 
   lazy val pipeline = new Pipeline().setStages(Array(documentAssembler, model))
 
   it should "create completions" in {
     val data = Seq("Hello, I am a").toDF("text")
     val result = pipeline.fit(data).transform(data)
-    result.show()
+    result.select("completions").show(truncate = false)
   }
 }

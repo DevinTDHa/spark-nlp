@@ -19,7 +19,7 @@ package com.johnsnowlabs.nlp.gguf
 import com.johnsnowlabs.ml.gguf.GGUFWrapper
 import com.johnsnowlabs.nlp._
 import com.johnsnowlabs.nlp.serialization.MapFeature
-import de.kherud.llama.InferenceParameters
+import de.kherud.llama.{InferenceParameters, ModelParameters}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.SparkSession
@@ -113,14 +113,15 @@ class AutoGGUFModel(override val uid: String)
             .setNPredict(20)
             .setTopK(getTopK)
 
-          val completedText = getModelIfNotSet.getSession.complete(anno.result, inferenceParams)
+          val modelParams = new ModelParameters
 
-          new Annotation(
-            anno.annotatorType,
-            0,
-            completedText.length - 1,
-            completedText,
-            Map.empty)
+          val completedText = getModelIfNotSet
+            .getSession(modelParams)
+            .complete(anno.result, inferenceParams)
+
+          val totalText = anno.result + completedText
+
+          new Annotation(anno.annotatorType, 0, totalText.length - 1, totalText, Map.empty)
         }.toSeq
       } else Seq.empty[Annotation]
     }
@@ -160,7 +161,7 @@ trait ReadAutoGGUFModelDLModel {
     // TODO: extract parameters
     val annotatorModel = new AutoGGUFModel()
 
-    annotatorModel.setModelIfNotSet(spark, GGUFWrapper.read(modelPath))
+    annotatorModel.setModelIfNotSet(spark, GGUFWrapper.read(spark, modelPath))
     annotatorModel
   }
 }

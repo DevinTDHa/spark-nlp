@@ -18,9 +18,9 @@ package com.johnsnowlabs.nlp.gguf
 
 import com.johnsnowlabs.ml.gguf.GGUFWrapper
 import com.johnsnowlabs.nlp._
-import com.johnsnowlabs.nlp.serialization.MapFeature
 import de.kherud.llama.{InferenceParameters, ModelParameters}
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.ml.param.{BooleanParam, IntParam}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.SparkSession
 
@@ -64,9 +64,28 @@ class AutoGGUFModel(override val uid: String)
     */
   def this() = this(Identifiable.randomUID("AutoGGUFModel"))
 
-  /** Vocabulary used to encode the words to ids */
-  protected[nlp] val vocabulary: MapFeature[String, Int] =
-    new MapFeature(this, "vocabulary").setProtected()
+  // Model Parameters
+  val nGPULayers: IntParam =
+    new IntParam(
+      this,
+      "nGPULayers",
+      "Number of layers to offload to GPU",
+      (value: Int) => value >= 0)
+
+  /** @group setParam */
+  def setNGPULayers(value: Int): this.type = set(nGPULayers, value)
+
+  /** @group getParam */
+  def getNGPULayers: Int = $(nGPULayers)
+
+  val useMemoryLock: BooleanParam =
+    new BooleanParam(this, "useMemoryLock", "Use memory lock for GPU memory")
+
+  /** @group setParam */
+  def setUseMemoryLock(value: Boolean): this.type = set(useMemoryLock, value)
+
+  /** @group getParam */
+  def getUseMemoryLock: Boolean = $(useMemoryLock)
 
   setDefault(
     minOutputLength -> 0,
@@ -79,7 +98,8 @@ class AutoGGUFModel(override val uid: String)
     noRepeatNgramSize -> 0,
     batchSize -> 2,
     beamSize -> 1,
-    nReturnSequences -> 1)
+    nReturnSequences -> 1,
+    nGPULayers -> 0)
 
   private var _model: Option[Broadcast[GGUFWrapper]] = None
 
@@ -105,12 +125,13 @@ class AutoGGUFModel(override val uid: String)
     */
   override def batchAnnotate(batchedAnnotations: Seq[Array[Annotation]]): Seq[Seq[Annotation]] = {
     batchedAnnotations.map { annotation: Array[Annotation] =>
+      println(s"Processing batch of length ${annotation.length}")
       if (annotation.nonEmpty) {
         annotation.map { anno: Annotation =>
           // TODO add rest of the parameters
           val inferenceParams = new InferenceParameters()
             .setTemperature(getTemperature.toFloat)
-            .setNPredict(20)
+            .setNPredict(10)
             .setTopK(getTopK)
 
           val modelParams = new ModelParameters
@@ -121,7 +142,12 @@ class AutoGGUFModel(override val uid: String)
 
           val totalText = anno.result + completedText
 
-          new Annotation(anno.annotatorType, 0, totalText.length - 1, totalText, Map.empty)
+          new Annotation(
+            anno.annotatorType,
+            0,
+            totalText.length - 1,
+            totalText,
+            Map("prompt" -> anno.result))
         }.toSeq
       } else Seq.empty[Annotation]
     }

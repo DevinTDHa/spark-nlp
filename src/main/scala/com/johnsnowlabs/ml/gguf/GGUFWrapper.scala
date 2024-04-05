@@ -16,7 +16,7 @@
 package com.johnsnowlabs.ml.gguf
 
 import com.johnsnowlabs.util.{FileHelper, ZipArchiveUtil}
-import de.kherud.llama.{LlamaModel, ModelParameters}
+import de.kherud.llama.{LlamaModel, LogLevel, ModelParameters}
 import org.apache.spark.SparkFiles
 import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
@@ -32,7 +32,7 @@ class GGUFWrapper(var modelFileName: String, var modelFolder: String) extends Se
     this(null, null)
   }
 
-  // Important for serialization on none-kyro serializers
+  // Important for serialization on none-kryo serializers
   @transient private var llamaModel: LlamaModel = _
 
   def getSession(modelParameters: ModelParameters): LlamaModel =
@@ -40,10 +40,13 @@ class GGUFWrapper(var modelFileName: String, var modelFolder: String) extends Se
       if (llamaModel == null) {
         // TODO: Validate when modelFileName or tmpFolder is None??
         val modelFilePath = SparkFiles.get(modelFileName)
+        println("DEBUG DHA: Loading GGUF Model from file: " + modelFilePath)
 
-        if (Paths.get(modelFilePath).toFile.exists())
+        if (Paths.get(modelFilePath).toFile.exists()) {
           llamaModel = GGUFWrapper.withSafeGGUFModelLoader(Some(modelFilePath), modelParameters)
-        else
+          LlamaModel.setLogger((level: LogLevel, message: String) =>
+            println(s"DHA LLAMA $level: $message"))
+        } else
           throw new IllegalStateException(
             s"Model file $modelFileName does not exist in SparkFiles.")
       }

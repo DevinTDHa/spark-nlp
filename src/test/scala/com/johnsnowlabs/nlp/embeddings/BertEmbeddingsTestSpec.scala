@@ -20,7 +20,7 @@ import com.johnsnowlabs.nlp.annotators.{StopWordsCleaner, Tokenizer}
 import com.johnsnowlabs.nlp.base.DocumentAssembler
 import com.johnsnowlabs.nlp.training.CoNLL
 import com.johnsnowlabs.nlp.util.io.ResourceHelper
-import com.johnsnowlabs.tags.SlowTest
+import com.johnsnowlabs.tags.{FastTest, SlowTest}
 import com.johnsnowlabs.util.Benchmark
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.functions.{col, explode, size}
@@ -228,6 +228,46 @@ class BertEmbeddingsTestSpec extends AnyFlatSpec {
 
     assert(totalTokens == totalEmbeddings)
 
+  }
+
+  "Bert Embeddings" should "correctly embed tokens and sentences with openVINO" taggedAs FastTest in {
+
+    import ResourceHelper.spark.implicits._
+
+    val ddd = Seq("Something is weird on the notebooks, something is happening.").toDF("text")
+
+    val data1 = Seq(
+      "In the Seven Kingdoms of Westeros, a soldier of the ancient Night's Watch order survives an attack by supernatural creatures known as the White Walkers, thought until now to be mythical.")
+      .toDF("text")
+
+    val data2 = Seq(
+      "In King's Landing, the capital, Jon Arryn, the King's Hand, dies under mysterious circumstances.")
+      .toDF("text")
+
+    val data3 = Seq(
+      "Tyrion makes saddle modifications for Bran that will allow the paraplegic boy to ride.")
+      .toDF("text")
+
+    val document = new DocumentAssembler()
+      .setInputCol("text")
+      .setOutputCol("document")
+
+    val tokenizer = new Tokenizer()
+      .setInputCols(Array("document"))
+      .setOutputCol("token")
+
+    val modelPath = "src/test/resources/tf-hub-bert/model"
+    val embeddings = BertEmbeddings
+      .loadSavedModel(modelPath, ResourceHelper.spark, useOpenvino = true)
+      .setInputCols(Array("token", "document"))
+      .setOutputCol("bert")
+
+    val pipeline = new Pipeline().setStages(Array(document, tokenizer, embeddings))
+
+    pipeline.fit(ddd).transform(ddd).select("bert").show()
+    pipeline.fit(data1).transform(data1).select("bert").show()
+    pipeline.fit(data2).transform(data2).select("bert").show()
+    pipeline.fit(data3).transform(data3).select("bert").show()
   }
 
 }

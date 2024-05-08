@@ -256,7 +256,8 @@ class BertEmbeddingsTestSpec extends AnyFlatSpec {
       .setInputCols(Array("document"))
       .setOutputCol("token")
 
-    val modelPath = "src/test/resources/tf-hub-bert/model"
+//    val modelPath = "src/test/resources/tf-hub-bert/model"
+    val modelPath = "bert-base-cased"
     val embeddings = BertEmbeddings
       .loadSavedModel(modelPath, ResourceHelper.spark, useOpenvino = true)
       .setInputCols(Array("token", "document"))

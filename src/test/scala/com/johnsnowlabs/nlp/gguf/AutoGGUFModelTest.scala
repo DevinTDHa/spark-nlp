@@ -13,7 +13,7 @@ class AutoGGUFModelTest extends AnyFlatSpec {
   behavior of "AutoGGUFModelTest"
 
   lazy val modelPath =
-    "/home/ducha/Workspace/building/java-llama.cpp/models/mistral-7b-instruct-v0.2.Q2_K.gguf"
+    "/home/ducha/Workspace/building/java-llama.cpp/models/codellama-7b.Q2_K.gguf"
 
   lazy val documentAssembler = new DocumentAssembler()
     .setInputCol("text")
@@ -42,7 +42,7 @@ class AutoGGUFModelTest extends AnyFlatSpec {
       .loadSavedModel(modelPath, ResourceHelper.spark)
       .setInputCols("document")
       .setOutputCol("completions")
-      .setBatchSize(2)
+      .setBatchSize(4)
 
     lazy val pipeline = new Pipeline().setStages(Array(documentAssembler, model))
 

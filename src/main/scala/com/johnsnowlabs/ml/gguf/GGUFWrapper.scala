@@ -43,9 +43,8 @@ class GGUFWrapper(var modelFileName: String, var modelFolder: String) extends Se
         println("DEBUG DHA: Loading GGUF Model from file: " + modelFilePath)
 
         if (Paths.get(modelFilePath).toFile.exists()) {
-          llamaModel = GGUFWrapper.withSafeGGUFModelLoader(Some(modelFilePath), modelParameters)
-          LlamaModel.setLogger((level: LogLevel, message: String) =>
-            println(s"DHA LLAMA $level: $message"))
+          modelParameters.setModelFilePath(modelFilePath)
+          llamaModel = GGUFWrapper.withSafeGGUFModelLoader(modelParameters)
         } else
           throw new IllegalStateException(
             s"Model file $modelFileName does not exist in SparkFiles.")
@@ -75,15 +74,9 @@ object GGUFWrapper {
   private[GGUFWrapper] val logger: Logger = LoggerFactory.getLogger("GGUFWrapper")
 
   // TODO: make sure this.synchronized is needed or it's not a bottleneck
-  private def withSafeGGUFModelLoader(
-      ggufModelPath: Option[String] = None,
-      modelParameters: ModelParameters): LlamaModel =
+  private def withSafeGGUFModelLoader(modelParameters: ModelParameters): LlamaModel =
     this.synchronized {
-      if (ggufModelPath.isDefined) {
-        new LlamaModel(ggufModelPath.get, modelParameters) // TODO: Model parameters
-      } else {
-        throw new UnsupportedOperationException("ggufModelPath not defined")
-      }
+      new LlamaModel(modelParameters) // TODO: Model parameters
     }
 
   def read(sparkSession: SparkSession, modelPath: String): GGUFWrapper = {

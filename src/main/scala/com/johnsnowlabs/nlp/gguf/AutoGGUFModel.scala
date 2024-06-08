@@ -18,7 +18,7 @@ package com.johnsnowlabs.nlp.gguf
 
 import com.johnsnowlabs.ml.gguf.GGUFWrapper
 import com.johnsnowlabs.nlp._
-import de.kherud.llama.{InferenceParameters, ModelParameters}
+import de.kherud.llama.{InferenceParameters, LlamaModel, ModelParameters}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.param.{BooleanParam, IntParam}
 import org.apache.spark.ml.util.Identifiable
@@ -124,31 +124,33 @@ class AutoGGUFModel(override val uid: String)
     *   Completed text sequences
     */
   override def batchAnnotate(batchedAnnotations: Seq[Array[Annotation]]): Seq[Seq[Annotation]] = {
-    batchedAnnotations.map { annotation: Array[Annotation] =>
-      println(s"Processing batch of length ${annotation.length}")
-      if (annotation.nonEmpty) {
-        annotation.map { anno: Annotation =>
-          // TODO add rest of the parameters
-          val inferenceParams = new InferenceParameters()
-            .setTemperature(getTemperature.toFloat)
-            .setNPredict(10)
-            .setTopK(getTopK)
+    batchedAnnotations.map { annotations: Array[Annotation] =>
+      println(s"Processing batch of length ${annotations.length}")
+      println(s"First prompt: ${annotations.head.result}")
 
-          val modelParams = new ModelParameters
+      // TODO add rest of the parameters
+      val inferenceParams = new InferenceParameters("")
+        .setTemperature(getTemperature.toFloat)
+        .setNPredict(5)
+        .setTopK(getTopK)
 
-          val completedText = getModelIfNotSet
-            .getSession(modelParams)
-            .complete(anno.result, inferenceParams)
 
-          val totalText = anno.result + completedText
+      val modelParams = new ModelParameters // TODO: set relevant parameters here
+      val model: LlamaModel = getModelIfNotSet.getSession(modelParams)
 
+      if (annotations.nonEmpty) {
+        val annotationsText = annotations.map(_.result)
+        val completed_texts = model.requestBatchCompletion(annotationsText, inferenceParams)
+
+        val result: Seq[Annotation] = annotations.zip(completed_texts).map { case (anno, text) =>
           new Annotation(
-            anno.annotatorType,
-            0,
-            totalText.length - 1,
-            totalText,
+            outputAnnotatorType,
+            0, // TODO Maybe prepend the original text?
+            text.length - 1,
+            text,
             Map("prompt" -> anno.result))
-        }.toSeq
+        }
+        result
       } else Seq.empty[Annotation]
     }
   }

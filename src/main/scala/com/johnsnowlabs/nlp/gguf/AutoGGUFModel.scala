@@ -53,7 +53,7 @@ class AutoGGUFModel(override val uid: String)
     extends AnnotatorModel[AutoGGUFModel]
     with HasBatchedAnnotate[AutoGGUFModel]
     with HasEngine
-    with HasGeneratorProperties
+    with HasLlamaCppProperties
     with HasProtectedParams {
 
   override val outputAnnotatorType: AnnotatorType = AnnotatorType.DOCUMENT
@@ -63,43 +63,6 @@ class AutoGGUFModel(override val uid: String)
     * type
     */
   def this() = this(Identifiable.randomUID("AutoGGUFModel"))
-
-  // Model Parameters
-  val nGPULayers: IntParam =
-    new IntParam(
-      this,
-      "nGPULayers",
-      "Number of layers to offload to GPU",
-      (value: Int) => value >= 0)
-
-  /** @group setParam */
-  def setNGPULayers(value: Int): this.type = set(nGPULayers, value)
-
-  /** @group getParam */
-  def getNGPULayers: Int = $(nGPULayers)
-
-  val useMemoryLock: BooleanParam =
-    new BooleanParam(this, "useMemoryLock", "Use memory lock for GPU memory")
-
-  /** @group setParam */
-  def setUseMemoryLock(value: Boolean): this.type = set(useMemoryLock, value)
-
-  /** @group getParam */
-  def getUseMemoryLock: Boolean = $(useMemoryLock)
-
-  setDefault(
-    minOutputLength -> 0,
-    maxOutputLength -> 448,
-    doSample -> false,
-    temperature -> 1.0,
-    topK -> 1,
-    topP -> 1.0,
-    repetitionPenalty -> 1.0,
-    noRepeatNgramSize -> 0,
-    batchSize -> 2,
-    beamSize -> 1,
-    nReturnSequences -> 1,
-    nGPULayers -> 0)
 
   private var _model: Option[Broadcast[GGUFWrapper]] = None
 
@@ -128,12 +91,10 @@ class AutoGGUFModel(override val uid: String)
       println(s"Processing batch of length ${annotations.length}")
       println(s"First prompt: ${annotations.head.result}")
 
-      // TODO add rest of the parameters
       val inferenceParams = new InferenceParameters("")
         .setTemperature(getTemperature.toFloat)
         .setNPredict(5)
         .setTopK(getTopK)
-
 
       val modelParams = new ModelParameters // TODO: set relevant parameters here
       val model: LlamaModel = getModelIfNotSet.getSession(modelParams)

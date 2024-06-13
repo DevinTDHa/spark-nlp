@@ -2,6 +2,7 @@ package com.johnsnowlabs.nlp
 
 import org.apache.spark.ml.param.{
   BooleanParam,
+  DoubleArrayParam,
   FloatParam,
   IntArrayParam,
   IntParam,
@@ -364,11 +365,572 @@ trait HasLlamaCppProperties {
   }
 
   // ---------------- MODEL PARAMETERS ----------------
+  /** @group param */
+  val nThreads = new IntParam(
+    this,
+    "nThreads",
+    "Set the number of threads to use during generation (default: 8)")
+
+  /** @group param */
+  val nThreadsDraft = new IntParam(
+    this,
+    "nThreadsDraft",
+    "Set the number of threads to use during draft generation (default: same as nThreads)")
+
+  /** @group param */
+  val nThreadsBatch = new IntParam(
+    this,
+    "nThreadsBatch",
+    "Set the number of threads to use during batch and prompt processing (default: same as {@link #setNThreads(int)})")
+
+  /** @group param */
+  val nThreadsBatchDraft = new IntParam(
+    this,
+    "nThreadsBatchDraft",
+    "Set the number of threads to use during batch and prompt processing (default: same as {@link #setNThreadsDraft(int)})")
+
+  /** @group param */
+  val nCtx = new IntParam(
+    this,
+    "nCtx",
+    "Set the size of the prompt context (default: 512, 0 = loaded from model)")
+
+  /** @group param */
+  val nBatch = new IntParam(
+    this,
+    "nBatch",
+    "Set the logical batch size for prompt processing (must be >=32 to use BLAS)")
+
+  /** @group param */
+  val nUbatch = new IntParam(
+    this,
+    "nUbatch",
+    "Set the physical batch size for prompt processing (must be >=32 to use BLAS)")
+
+  /** @group param */
+  val nDraft = new IntParam(
+    this,
+    "nDraft",
+    "Set the number of tokens to draft for speculative decoding (default: 5)")
+
+  /** @group param */
+  val nChunks = new IntParam(
+    this,
+    "nChunks",
+    "Set the maximal number of chunks to process (default: -1, -1 = all)")
+
+  /** @group param */
+  val nParallel =
+    new IntParam(this, "nParallel", "Set the number of parallel sequences to decode (default: 1)")
+
+  /** @group param */
+  val nSequences =
+    new IntParam(this, "nSequences", "Set the number of sequences to decode (default: 1)")
+
+  /** @group param */
+  val pSplit = new FloatParam(
+    this,
+    "pSplit",
+    "Set the speculative decoding split probability (default: 0.1)")
+
+  /** @group param */
+  val nGpuLayers = new IntParam(
+    this,
+    "nGpuLayers",
+    "Set the number of layers to store in VRAM (-1 - use default)")
+
+  /** @group param */
+  val nGpuLayersDraft = new IntParam(
+    this,
+    "nGpuLayersDraft",
+    "Set the number of layers to store in VRAM for the draft model (-1 - use default)")
+
+  /** Set how to split the model across GPUs
+    *
+    * 0. NONE: No GPU split
+    *   1. LAYER: Split the model across GPUs by layer 2. ROW: Split the model across GPUs by rows
+    *
+    * @group param
+    */
+  /** @group param */
+  val gpuSplitMode = new IntParam(this, "gpuSplitMode", "Set how to split the model across GPUs")
+
+  /** @group param */
+  val mainGpu = new IntParam(
+    this,
+    "mainGpu",
+    "Set the GPU that is used for scratch and small tensors"
+  ) // TODO: what does that even mean?
+  /** @group param */
+  val tensorSplit = new DoubleArrayParam(
+    this,
+    "tensorSplit",
+    "Set how split tensors should be distributed across GPUs")
+
+  /** @group param */
+  val nBeams =
+    new IntParam(this, "nBeams", "Set usage of beam search of given width if non-zero.")
+
+  /** @group param */
+  val grpAttnN = new IntParam(this, "grpAttnN", "Set the group-attention factor (default: 1)")
+
+  /** @group param */
+  val grpAttnW = new IntParam(this, "grpAttnW", "Set the group-attention width (default: 512.0)")
+
+  /** @group param */
+  val ropeFreqBase = new FloatParam(
+    this,
+    "ropeFreqBase",
+    "Set the RoPE base frequency, used by NTK-aware scaling (default: loaded from model)")
+
+  /** @group param */
+  val ropeFreqScale = new FloatParam(
+    this,
+    "ropeFreqScale",
+    "Set the RoPE frequency scaling factor, expands context by a factor of 1/N")
+
+  /** @group param */
+  val yarnExtFactor = new FloatParam(
+    this,
+    "yarnExtFactor",
+    "Set the YaRN extrapolation mix factor (default: 1.0, 0.0 = full interpolation)")
+
+  /** @group param */
+  val yarnAttnFactor = new FloatParam(
+    this,
+    "yarnAttnFactor",
+    "Set the YaRN scale sqrt(t) or attention magnitude (default: 1.0)")
+
+  /** @group param */
+  val yarnBetaFast = new FloatParam(
+    this,
+    "yarnBetaFast",
+    "Set the YaRN low correction dim or beta (default: 32.0)")
+
+  /** @group param */
+  val yarnBetaSlow = new FloatParam(
+    this,
+    "yarnBetaSlow",
+    "Set the YaRN high correction dim or alpha (default: 1.0)")
+
+  /** @group param */
+  val yarnOrigCtx = new IntParam(
+    this,
+    "yarnOrigCtx",
+    "Set the YaRN original context size of model (default: 0 = model training context size)")
+
+  /** @group param */
+  val defragThold = new FloatParam(
+    this,
+    "defragThold",
+    "Set the KV cache defragmentation threshold (default: -1.0, &lt; 0 - disabled)")
+
+  /** Set optimization strategies that help on some NUMA systems (if available)
+    *
+    * Available Strategies:
+    *
+    *   - 0 DISABLED: No NUMA optimizations
+    *   - 1 DISTRIBUTE: spread execution evenly over all
+    *   - 2 ISOLATE: only spawn threads on CPUs on the node that execution started on
+    *   - 3 NUMA_CTL: use the CPU map provided by numactl
+    *   - 4 MIRROR: TODO
+    *
+    * @group param
+    */
+  val numaStrategy = new IntParam(
+    this,
+    "numaStrategy",
+    "Set optimization strategies that help on some NUMA systems (if available)")
+
+  /** Set the RoPE frequency scaling method, defaults to linear unless specified by the model.
+    *
+    *   - 0 UNSPECIFIED: TODO
+    *   - 1 LINEAR: Linear scaling
+    *   - 2 YARN: TODO
+    * @group param
+    */
+  val ropeScalingType = new IntParam(
+    this,
+    "ropeScalingType",
+    "Set the RoPE frequency scaling method, defaults to linear unless specified by the model")
+
+  /** Set the pooling type for embeddings, use model default if unspecified
+    *
+    *   - 0 UNSPECIFIED: TODO
+    *   - 1 MEAN: Mean Pooling
+    *   - 2 CLS: CLS Pooling
+    *
+    * @group param
+    */
+  val poolingType = new IntParam(
+    this,
+    "poolingType",
+    "Set the pooling type for embeddings, use model default if unspecified")
+  //  model = new Param[String](this, "model", "Set the model file path to load (default: models/7B/ggml-model-f16.gguf)")
+  /** @group param */
+  val modelDraft = new Param[String](
+    this,
+    "modelDraft",
+    "Set the draft model for speculative decoding (default: unused)")
+  //  modelAlias = new Param[String](this, "modelAlias", "Set a model alias")
+  /** @group param */
+  val lookupCacheStatic = new Param[String](
+    this,
+    "lookupCacheStatic",
+    "Set path to static lookup cache to use for lookup decoding (not updated by generation)")
+
+  /** @group param */
+  val lookupCacheDynamic = new Param[String](
+    this,
+    "lookupCacheDynamic",
+    "Set path to dynamic lookup cache to use for lookup decoding (updated by generation)")
+  //    * Set LoRA adapters to use (implies --no-mmap).
+  /** @group param */
+  //    Float> loraAdapters = new Map<String, Param(this, "Float", "The key is expected to be a file path, the values are expected to be scales.")
+  /** @group param */
+  val loraBase = new Param[String](
+    this,
+    "loraBase",
+    "Set an optional model to use as a base for the layers modified by the LoRA adapter")
+
+  /** @group param */
+  val embedding =
+    new BooleanParam(this, "embedding", "Whether to load model with embedding support")
+
+  /** @group param */
+  val contBatching = new BooleanParam(
+    this,
+    "contBatching",
+    "Whether to enable continuous batching (also called dynamic batching) (default: disabled)")
+
+  /** @group param */
+  val flashAttention = new BooleanParam(
+    this,
+    "flashAttention",
+    "Whether to enable Flash Attention (default: disabled)")
+
+  /** @group param */
+  val inputPrefixBos = new BooleanParam(
+    this,
+    "inputPrefixBos",
+    "Whether to add prefix BOS to user inputs, preceding the `--in-prefix` string")
+
+  /** @group param */
+  val useMmap = new BooleanParam(
+    this,
+    "useMmap",
+    "Whether to use memory-map model (faster load but may increase pageouts if not using mlock)")
+
+  /** @group param */
+  val useMlock = new BooleanParam(
+    this,
+    "useMlock",
+    "Whether to force the system to keep model in RAM rather than swapping or compressing")
+
+  /** @group param */
+  val noKvOffload = new BooleanParam(this, "noKvOffload", "Whether to disable KV offload")
+
+  /** @group param */
+  val systemPrompt = new Param[String](this, "systemPrompt", "Set a system prompt to use")
+
+  /** @group param */
+  val chatTemplate =
+    new Param[String](this, "chatTemplate", "The chat template to use (default: empty)")
+
+  /** Set the number of threads to use during generation (default: 8)
+    *
+    * @group setParam
+    */
+  def setNThreads(nThreads: Int) = { set(this.nThreads, nThreads) }
+
+  /** Set the number of threads to use during draft generation (default: same as nThreads)
+    *
+    * @group setParam
+    */
+  def setNThreadsDraft(nThreadsDraft: Int) = { set(this.nThreadsDraft, nThreadsDraft) }
+
+  /** Set the number of threads to use during batch and prompt processing (default: same as
+    * nThreads)
+    *
+    * @group setParam
+    */
+  def setNThreadsBatch(nThreadsBatch: Int) = { set(this.nThreadsBatch, nThreadsBatch) }
+
+  /** Set the number of threads to use during batch and prompt processing (default: same as
+    * nThreads)
+    *
+    * @group setParam
+    */
+  def setNThreadsBatchDraft(nThreadsBatchDraft: Int) = {
+    set(this.nThreadsBatchDraft, nThreadsBatchDraft)
+  }
+
+  /** Set the size of the prompt context (default: 512, 0 = loaded from model)
+    *
+    * @group setParam
+    */
+  def setNCtx(nCtx: Int) = { set(this.nCtx, nCtx) }
+
+  /** Set the logical batch size for prompt processing (must be >=32 to use BLAS)
+    *
+    * @group setParam
+    */
+  def setNBatch(nBatch: Int) = { set(this.nBatch, nBatch) }
+
+  /** Set the physical batch size for prompt processing (must be >=32 to use BLAS)
+    *
+    * @group setParam
+    */
+  def setNUbatch(nUbatch: Int) = { set(this.nUbatch, nUbatch) }
+
+  /** Set the number of tokens to draft for speculative decoding (default: 5)
+    *
+    * @group setParam
+    */
+  def setNDraft(nDraft: Int) = { set(this.nDraft, nDraft) }
+
+  /** Set the maximal number of chunks to process (default: -1, -1 = all)
+    *
+    * @group setParam
+    */
+  def setNChunks(nChunks: Int) = { set(this.nChunks, nChunks) }
+
+  /** Set the number of parallel sequences to decode (default: 1)
+    *
+    * @group setParam
+    */
+  def setNParallel(nParallel: Int) = { set(this.nParallel, nParallel) }
+
+  /** Set the number of sequences to decode (default: 1)
+    *
+    * @group setParam
+    */
+  def setNSequences(nSequences: Int) = { set(this.nSequences, nSequences) }
+
+  /** Set the speculative decoding split probability (default: 0.1)
+    *
+    * @group setParam
+    */
+  def setPSplit(pSplit: Float) = { set(this.pSplit, pSplit) }
+
+  /** Set the number of layers to store in VRAM (-1 - use default)
+    *
+    * @group setParam
+    */
+  def setNGpuLayers(nGpuLayers: Int) = { set(this.nGpuLayers, nGpuLayers) }
+
+  /** Set the number of layers to store in VRAM for the draft model (-1 - use default)
+    *
+    * @group setParam
+    */
+  def setNGpuLayersDraft(nGpuLayersDraft: Int) = { set(this.nGpuLayersDraft, nGpuLayersDraft) }
+
+  /** Set how to split the model across GPUs
+    *
+    * 0. NONE: No GPU split
+    *   1. LAYER: Split the model across GPUs by layer 2. ROW: Split the model across GPUs by rows
+    *
+    * @group setParam
+    */
+  def setSplitMode(splitMode: Int) = { set(this.gpuSplitMode, splitMode) }
+
+  /** Set the GPU that is used for scratch and small tensors
+    *
+    * @group setParam
+    */
+  def setMainGpu(mainGpu: Int) = { set(this.mainGpu, mainGpu) }
+
+  /** Set how split tensors should be distributed across GPUs
+    *
+    * @group setParam
+    */
+  def setTensorSplit(tensorSplit: Array[Double]) = { set(this.tensorSplit, tensorSplit) }
+
+  /** Set usage of beam search of given width if non-zero.
+    *
+    * @group setParam
+    */
+  def setNBeams(nBeams: Int) = { set(this.nBeams, nBeams) }
+
+  /** Set the group-attention factor (default: 1)
+    *
+    * @group setParam
+    */
+  def setGrpAttnN(grpAttnN: Int) = { set(this.grpAttnN, grpAttnN) }
+
+  /** Set the group-attention width (default: 512.0)
+    *
+    * @group setParam
+    */
+  def setGrpAttnW(grpAttnW: Int) = { set(this.grpAttnW, grpAttnW) }
+
+  /** Set the RoPE base frequency, used by NTK-aware scaling (default: loaded from model)
+    *
+    * @group setParam
+    */
+  def setRopeFreqBase(ropeFreqBase: Float) = { set(this.ropeFreqBase, ropeFreqBase) }
+
+  /** Set the RoPE frequency scaling factor, expands context by a factor of 1/N
+    *
+    * @group setParam
+    */
+  def setRopeFreqScale(ropeFreqScale: Float) = { set(this.ropeFreqScale, ropeFreqScale) }
+
+  /** Set the YaRN extrapolation mix factor (default: 1.0, 0.0 = full interpolation)
+    *
+    * @group setParam
+    */
+  def setYarnExtFactor(yarnExtFactor: Float) = { set(this.yarnExtFactor, yarnExtFactor) }
+
+  /** Set the YaRN scale sqrt(t) or attention magnitude (default: 1.0)
+    *
+    * @group setParam
+    */
+  def setYarnAttnFactor(yarnAttnFactor: Float) = { set(this.yarnAttnFactor, yarnAttnFactor) }
+
+  /** Set the YaRN low correction dim or beta (default: 32.0)
+    *
+    * @group setParam
+    */
+  def setYarnBetaFast(yarnBetaFast: Float) = { set(this.yarnBetaFast, yarnBetaFast) }
+
+  /** Set the YaRN high correction dim or alpha (default: 1.0)
+    *
+    * @group setParam
+    */
+  def setYarnBetaSlow(yarnBetaSlow: Float) = { set(this.yarnBetaSlow, yarnBetaSlow) }
+
+  /** Set the YaRN original context size of model (default: 0 = model training context size)
+    *
+    * @group setParam
+    */
+  def setYarnOrigCtx(yarnOrigCtx: Int) = { set(this.yarnOrigCtx, yarnOrigCtx) }
+
+  /** Set the KV cache defragmentation threshold (default: -1.0, < 0 - disabled)
+    *
+    * @group setParam
+    */
+  def setDefragmentationThreshold(defragThold: Float) = { set(this.defragThold, defragThold) }
+
+  /** Set optimization strategies that help on some NUMA systems (if available)
+    *
+    * Available Strategies:
+    *
+    *   - 0 DISABLED: No NUMA optimizations
+    *   - 1 DISTRIBUTE: spread execution evenly over all
+    *   - 2 ISOLATE: only spawn threads on CPUs on the node that execution started on
+    *   - 3 NUMA_CTL: use the CPU map provided by numactl
+    *   - 4 MIRROR: TODO
+    *
+    * @group setParam
+    */
+  def setNuma(numa: Int) = { set(this.numaStrategy, numa) }
+
+  /** Set the RoPE frequency scaling method, defaults to linear unless specified by the model.
+    *
+    *   - 0 UNSPECIFIED: TODO
+    *   - 1 LINEAR: Linear scaling
+    *   - 2 YARN: TODO
+    * @group setParam
+    */
+  def setRopeScalingType(ropeScalingType: Int) = { set(this.ropeScalingType, ropeScalingType) }
+
+  /** Set the pooling type for embeddings, use model default if unspecified
+    *
+    *   - 0 UNSPECIFIED: TODO
+    *   - 1 MEAN: Mean Pooling
+    *   - 2 CLS: CLS Pooling
+    *
+    * @group setParam
+    */
+  def setPoolingType(poolingType: Int) = { set(this.poolingType, poolingType) }
+
+  /** Set the draft model for speculative decoding (default: unused)
+    *
+    * @group setParam
+    */
+  def setModelDraft(modelDraft: String) = { set(this.modelDraft, modelDraft) }
+
+  /** Set a model alias
+    *
+    * @group setParam
+    */
+  def setLookupCacheStaticFilePath(lookupCacheStatic: String) = {
+    set(this.lookupCacheStatic, lookupCacheStatic)
+  }
+
+  /** Set a model alias
+    *
+    * @group setParam
+    */
+  def setLookupCacheDynamicFilePath(lookupCacheDynamic: String) = {
+    set(this.lookupCacheDynamic, lookupCacheDynamic)
+  }
+//  def setLoraAdapters(Float: Map<String,> loraAdapters) = { set(this.Float, Float) }
+  /** Set an optional model to use as a base for the layers modified by the LoRA adapter
+    *
+    * @group setParam
+    */
+  def setLoraBase(loraBase: String) = { set(this.loraBase, loraBase) }
+
+  /** Whether to load model with embedding support
+    *
+    * @group setParam
+    */
+  def setEmbedding(embedding: Boolean) = { set(this.embedding, embedding) }
+
+  /** Whether to enable continuous batching (also called dynamic batching) (default: disabled)
+    *
+    * @group setParam
+    */
+  def setContinuousBatching(contBatching: Boolean) = { set(this.contBatching, contBatching) }
+
+  /** Whether to enable Flash Attention (default: disabled)
+    *
+    * @group setParam
+    */
+  def setFlashAttention(flashAttention: Boolean) = { set(this.flashAttention, flashAttention) }
+
+  /** Whether to add prefix BOS to user inputs, preceding the `--in-prefix` string
+    *
+    * @group setParam
+    */
+  def setInputPrefixBos(inputPrefixBos: Boolean) = { set(this.inputPrefixBos, inputPrefixBos) }
+
+  /** Whether to use memory-map model (faster load but may increase pageouts if not using mlock)
+    *
+    * @group setParam
+    */
+  def setUseMmap(useMmap: Boolean) = { set(this.useMmap, useMmap) }
+
+  /** Whether to force the system to keep model in RAM rather than swapping or compressing
+    *
+    * @group setParam
+    */
+  def setUseMlock(useMlock: Boolean) = { set(this.useMlock, useMlock) }
+
+  /** Whether to disable KV offload
+    *
+    * @group setParam
+    */
+  def setNoKvOffload(noKvOffload: Boolean) = { set(this.noKvOffload, noKvOffload) }
+
+  /** Set a system prompt to use
+    *
+    * @group setParam
+    */
+  def setSystemPrompt(systemPrompt: String) = { set(this.systemPrompt, systemPrompt) }
+
+  /** The chat template to use (default: empty)
+    *
+    * @group setParam
+    */
+  def setChatTemplate(chatTemplate: String) = { set(this.chatTemplate, chatTemplate) }
 
   setDefault(
     inputPrefix -> "",
     inputSuffix -> "",
-    cachePrompt -> true,
+    cachePrompt -> false,
     nPredict -> -1,
     topK -> 40,
     topP -> 0.9f,
@@ -392,7 +954,51 @@ trait HasLlamaCppProperties {
     grammar -> "",
     penaltyPrompt -> "",
     ignoreEos -> false,
-    disableTokenIds -> Array(),
-    stopStrings -> Array(),
-    useChatTemplate -> false)
+    disableTokenIds -> Array[Int](),
+    stopStrings -> Array[String](),
+    useChatTemplate -> false,
+    nThreads -> 8,
+    nThreadsDraft -> 8,
+    nThreadsBatch -> 8,
+    nThreadsBatchDraft -> 8,
+    nCtx -> 512,
+    nBatch -> 32,
+    nUbatch -> 32,
+    nDraft -> 5,
+    nChunks -> -1,
+    nParallel -> 1,
+    nSequences -> 1,
+    pSplit -> 0.1f,
+    nGpuLayers -> -1,
+    nGpuLayersDraft -> -1,
+    gpuSplitMode -> 0,
+    mainGpu -> 0,
+    tensorSplit -> Array[Double](),
+    nBeams -> 0,
+    grpAttnN -> 1,
+    grpAttnW -> 512,
+    ropeFreqBase -> 1.0f,
+    ropeFreqScale -> 1.0f,
+    yarnExtFactor -> 1.0f,
+    yarnAttnFactor -> 1.0f,
+    yarnBetaFast -> 32.0f,
+    yarnBetaSlow -> 1.0f,
+    yarnOrigCtx -> 0,
+    defragThold -> -1.0f,
+    numaStrategy -> 0,
+    ropeScalingType -> 0,
+    poolingType -> 0,
+    modelDraft -> "",
+    lookupCacheStatic -> "",
+    lookupCacheDynamic -> "",
+    loraBase -> "",
+    embedding -> false,
+    contBatching -> false,
+    flashAttention -> false,
+    inputPrefixBos -> false,
+    useMmap -> false,
+    useMlock -> false,
+    noKvOffload -> false,
+    systemPrompt -> "",
+    chatTemplate -> "")
 }

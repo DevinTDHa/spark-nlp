@@ -97,8 +97,10 @@ trait HasLlamaCppProperties {
     this,
     "presencePenalty",
     "Set the repetition alpha presence penalty (default: 0.0, 0.0 = disabled)")
-  // Set MiroStat sampling strategies.
-  //  val miroStat = MiroStat mirostat // enum DISABLED, V1, V2
+
+  /** @group param */
+  val miroStat = new IntParam(this, "miroStat", "Set MiroStat sampling strategies.")
+
   /** @group param */
   val miroStatTau = new FloatParam(
     this,
@@ -145,8 +147,6 @@ trait HasLlamaCppProperties {
     "penaltyPrompt",
     "Override which part of the prompt is penalized for repetition.")
 
-  /** @group param */
-//  val penaltyPrompt = new Param[String](this, "penaltyPrompt", "Override which part of the prompt is penalized for repetition.") // TODO: or provide token ids?
   /** @group param */
   val ignoreEos = new BooleanParam(
     this,
@@ -274,7 +274,16 @@ trait HasLlamaCppProperties {
     * @group setParam
     */
   def setPresencePenalty(presencePenalty: Float) = { set(this.presencePenalty, presencePenalty) }
-// def setMiroStat(mirostat: MiroStat ) =  {set(this.mirostat, mirostat)}
+
+  /** Set MiroStat sampling strategies.
+    *
+    *   - 0 DISABLED: No MiroStat
+    *   - 1 V1: MiroStat V1
+    *   - 2 V2: MiroStat V2
+    *
+    * @group setParam
+    */
+  def setMiroStat(mirostat: Int) = set(this.miroStat, mirostat)
 
   /** Set the MiroStat target entropy, parameter tau (default: 5.0)
     *
@@ -573,20 +582,24 @@ trait HasLlamaCppProperties {
     "modelDraft",
     "Set the draft model for speculative decoding (default: unused)")
   //  modelAlias = new Param[String](this, "modelAlias", "Set a model alias")
-  /** @group param */
+  /** @group param
+    * TODO: Needed?
+    */
   val lookupCacheStatic = new Param[String](
     this,
     "lookupCacheStatic",
     "Set path to static lookup cache to use for lookup decoding (not updated by generation)")
 
-  /** @group param */
+  /** @group param
+    * TODO: Needed?
+    */
   val lookupCacheDynamic = new Param[String](
     this,
     "lookupCacheDynamic",
     "Set path to dynamic lookup cache to use for lookup decoding (updated by generation)")
   //    * Set LoRA adapters to use (implies --no-mmap).
   /** @group param */
-  //    Float> loraAdapters = new Map<String, Param(this, "Float", "The key is expected to be a file path, the values are expected to be scales.")
+  //    val loraAdapters = new Map<String, Param(this, "Float", "The key is expected to be a file path, the values are expected to be scales.")
   /** @group param */
   val loraBase = new Param[String](
     this,
@@ -1001,4 +1014,236 @@ trait HasLlamaCppProperties {
     noKvOffload -> false,
     systemPrompt -> "",
     chatTemplate -> "")
+
+  // ---------------- GETTERS ----------------
+  /** @group getParam */
+  def getInputPrefix: String = $(inputPrefix)
+
+  /** @group getParam */
+  def getInputSuffix: String = $(inputSuffix)
+
+  /** @group getParam */
+  def getCachePrompt: Boolean = $(cachePrompt)
+
+  /** @group getParam */
+  def getNPredict: Int = $(nPredict)
+
+  /** @group getParam */
+  def getTopK: Int = $(topK)
+
+  /** @group getParam */
+  def getTopP: Float = $(topP)
+
+  /** @group getParam */
+  def getMinP: Float = $(minP)
+
+  /** @group getParam */
+  def getTfsZ: Float = $(tfsZ)
+
+  /** @group getParam */
+  def getTypicalP: Float = $(typicalP)
+
+  /** @group getParam */
+  def getTemperature: Float = $(temperature)
+
+  /** @group getParam */
+  def getDynamicTemperatureRange: Float = $(dynamicTemperatureRange)
+
+  /** @group getParam */
+  def getDynamicTemperatureExponent: Float = $(dynamicTemperatureExponent)
+
+  /** @group getParam */
+  def getRepeatLastN: Int = $(repeatLastN)
+
+  /** @group getParam */
+  def getRepeatPenalty: Float = $(repeatPenalty)
+
+  /** @group getParam */
+  def getFrequencyPenalty: Float = $(frequencyPenalty)
+
+  /** @group getParam */
+  def getPresencePenalty: Float = $(presencePenalty)
+
+  /** @group getParam */
+  def getMiroStat: Int = $(miroStat)
+
+  /** @group getParam */
+  def getMiroStatTau: Float = $(miroStatTau)
+
+  /** @group getParam */
+  def getMiroStatEta: Float = $(miroStatEta)
+
+  /** @group getParam */
+  def getPenalizeNl: Boolean = $(penalizeNl)
+
+  /** @group getParam */
+  def getNKeep: Int = $(nKeep)
+
+  /** @group getParam */
+  def getSeed: Int = $(seed)
+
+  /** @group getParam */
+  def getNProbs: Int = $(nProbs)
+
+  /** @group getParam */
+  def getMinKeep: Int = $(minKeep)
+
+  /** @group getParam */
+  def getGrammar: String = $(grammar)
+
+  /** @group getParam */
+  def getPenaltyPrompt: String = $(penaltyPrompt)
+
+  /** @group getParam */
+  def getIgnoreEos: Boolean = $(ignoreEos)
+
+  /** @group getParam */
+//  def getTokenIdBias = ???
+  /** @group getParam */
+//  def getTokenBias =  ???
+  /** @group getParam */
+  def getDisableTokenIds: Array[Int] = $(disableTokenIds)
+
+  /** @group getParam */
+  def getStopStrings: Array[String] = $(stopStrings)
+
+  /** @group getParam */
+//  def getSamplers : Sampler=  (samplers
+  /** @group getParam */
+  def getUseChatTemplate: Boolean = $(useChatTemplate)
+
+  /** @group getParam */
+  def getNThreads: Int = $(nThreads)
+
+  /** @group getParam */
+  def getNThreadsDraft: Int = $(nThreadsDraft)
+
+  /** @group getParam */
+  def getNThreadsBatch: Int = $(nThreadsBatch)
+
+  /** @group getParam */
+  def getNThreadsBatchDraft: Int = $(nThreadsBatchDraft)
+
+  /** @group getParam */
+  def getNCtx: Int = $(nCtx)
+
+  /** @group getParam */
+  def getNBatch: Int = $(nBatch)
+
+  /** @group getParam */
+  def getNUbatch: Int = $(nUbatch)
+
+  /** @group getParam */
+  def getNDraft: Int = $(nDraft)
+
+  /** @group getParam */
+  def getNChunks: Int = $(nChunks)
+
+  /** @group getParam */
+  def getNParallel: Int = $(nParallel)
+
+  /** @group getParam */
+  def getNSequences: Int = $(nSequences)
+
+  /** @group getParam */
+  def getPSplit: Float = $(pSplit)
+
+  /** @group getParam */
+  def getNGpuLayers: Int = $(nGpuLayers)
+
+  /** @group getParam */
+  def getNGpuLayersDraft: Int = $(nGpuLayersDraft)
+
+  /** @group getParam */
+  def getSplitMode: Int = $(gpuSplitMode)
+
+  /** @group getParam */
+  def getMainGpu: Int = $(mainGpu)
+
+  /** @group getParam */
+  def getTensorSplit: Array[Double] = $(tensorSplit)
+
+  /** @group getParam */
+  def getNBeams: Int = $(nBeams)
+
+  /** @group getParam */
+  def getGrpAttnN: Int = $(grpAttnN)
+
+  /** @group getParam */
+  def getGrpAttnW: Int = $(grpAttnW)
+
+  /** @group getParam */
+  def getRopeFreqBase: Float = $(ropeFreqBase)
+
+  /** @group getParam */
+  def getRopeFreqScale: Float = $(ropeFreqScale)
+
+  /** @group getParam */
+  def getYarnExtFactor: Float = $(yarnExtFactor)
+
+  /** @group getParam */
+  def getYarnAttnFactor: Float = $(yarnAttnFactor)
+
+  /** @group getParam */
+  def getYarnBetaFast: Float = $(yarnBetaFast)
+
+  /** @group getParam */
+  def getYarnBetaSlow: Float = $(yarnBetaSlow)
+
+  /** @group getParam */
+  def getYarnOrigCtx: Int = $(yarnOrigCtx)
+
+  /** @group getParam */
+  def getDefragmentationThreshold: Float = $(defragThold)
+
+  /** @group getParam */
+  def getNuma: Int = $(numaStrategy)
+
+  /** @group getParam */
+  def getRopeScalingType: Int = $(ropeScalingType)
+
+  /** @group getParam */
+  def getPoolingType: Int = $(poolingType)
+
+  /** @group getParam */
+  def getModelDraft: String = $(modelDraft)
+
+  /** @group getParam */
+  def getLookupCacheStaticFilePath: String = $(lookupCacheStatic)
+
+  /** @group getParam */
+  def getLookupCacheDynamicFilePath: String = $(lookupCacheDynamic)
+
+  /** @group getParam */
+//  def getLoraAdapters : Map= ???
+  /** @group getParam */
+  def getLoraBase: String = $(loraBase)
+
+  /** @group getParam */
+  def getEmbedding: Boolean = $(embedding)
+
+  /** @group getParam */
+  def getContinuousBatching: Boolean = $(contBatching)
+
+  /** @group getParam */
+  def getFlashAttention: Boolean = $(flashAttention)
+
+  /** @group getParam */
+  def getInputPrefixBos: Boolean = $(inputPrefixBos)
+
+  /** @group getParam */
+  def getUseMmap: Boolean = $(useMmap)
+
+  /** @group getParam */
+  def getUseMlock: Boolean = $(useMlock)
+
+  /** @group getParam */
+  def getNoKvOffload: Boolean = $(noKvOffload)
+
+  /** @group getParam */
+  def getSystemPrompt: String = $(systemPrompt)
+
+  /** @group getParam */
+  def getChatTemplate: String = $(chatTemplate)
+
 }

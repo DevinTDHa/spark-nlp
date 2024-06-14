@@ -49,6 +49,7 @@ class GGUFWrapper(var modelFileName: String, var modelFolder: String) extends Se
           throw new IllegalStateException(
             s"Model file $modelFileName does not exist in SparkFiles.")
       }
+      // TODO: if the model is already loaded then the model parameters will not apply. perhaps output a logline here.
       llamaModel
     }
 

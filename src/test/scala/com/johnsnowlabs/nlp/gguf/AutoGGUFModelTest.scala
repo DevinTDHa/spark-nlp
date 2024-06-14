@@ -23,7 +23,9 @@ class AutoGGUFModelTest extends AnyFlatSpec {
     .loadSavedModel(modelPath, ResourceHelper.spark)
     .setInputCols("document")
     .setOutputCol("completions")
-    .setBatchSize(2)
+    .setBatchSize(4)
+    .setNPredict(5)
+    .setNGpuLayers(99)
 
   lazy val pipeline = new Pipeline().setStages(Array(documentAssembler, model))
 
@@ -37,12 +39,6 @@ class AutoGGUFModelTest extends AnyFlatSpec {
     val jvmName = ManagementFactory.getRuntimeMXBean.getName
     val pid = jvmName.split("@")(0)
     println(s"Running in PID $pid")
-
-    lazy val model = AutoGGUFModel
-      .loadSavedModel(modelPath, ResourceHelper.spark)
-      .setInputCols("document")
-      .setOutputCol("completions")
-      .setBatchSize(4)
 
     lazy val pipeline = new Pipeline().setStages(Array(documentAssembler, model))
 

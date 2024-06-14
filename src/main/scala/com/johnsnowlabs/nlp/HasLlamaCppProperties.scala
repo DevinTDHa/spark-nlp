@@ -295,27 +295,27 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setNThreads(nThreads: Int) = { set(this.nThreads, nThreads) }
+  def setNThreads(nThreads: Int): this.type = { set(this.nThreads, nThreads) }
 
   /** Set the number of threads to use during draft generation (default: same as nThreads)
     *
     * @group setParam
     */
-  def setNThreadsDraft(nThreadsDraft: Int) = { set(this.nThreadsDraft, nThreadsDraft) }
+  def setNThreadsDraft(nThreadsDraft: Int): this.type = { set(this.nThreadsDraft, nThreadsDraft) }
 
   /** Set the number of threads to use during batch and prompt processing (default: same as
     * nThreads)
     *
     * @group setParam
     */
-  def setNThreadsBatch(nThreadsBatch: Int) = { set(this.nThreadsBatch, nThreadsBatch) }
+  def setNThreadsBatch(nThreadsBatch: Int): this.type = { set(this.nThreadsBatch, nThreadsBatch) }
 
   /** Set the number of threads to use during batch and prompt processing (default: same as
     * nThreads)
     *
     * @group setParam
     */
-  def setNThreadsBatchDraft(nThreadsBatchDraft: Int) = {
+  def setNThreadsBatchDraft(nThreadsBatchDraft: Int): this.type = {
     set(this.nThreadsBatchDraft, nThreadsBatchDraft)
   }
 
@@ -323,61 +323,61 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setNCtx(nCtx: Int) = { set(this.nCtx, nCtx) }
+  def setNCtx(nCtx: Int): this.type = { set(this.nCtx, nCtx) }
 
   /** Set the logical batch size for prompt processing (must be >=32 to use BLAS)
     *
     * @group setParam
     */
-  def setNBatch(nBatch: Int) = { set(this.nBatch, nBatch) }
+  def setNBatch(nBatch: Int): this.type = { set(this.nBatch, nBatch) }
 
   /** Set the physical batch size for prompt processing (must be >=32 to use BLAS)
     *
     * @group setParam
     */
-  def setNUbatch(nUbatch: Int) = { set(this.nUbatch, nUbatch) }
+  def setNUbatch(nUbatch: Int): this.type = { set(this.nUbatch, nUbatch) }
 
   /** Set the number of tokens to draft for speculative decoding (default: 5)
     *
     * @group setParam
     */
-  def setNDraft(nDraft: Int) = { set(this.nDraft, nDraft) }
+  def setNDraft(nDraft: Int): this.type = { set(this.nDraft, nDraft) }
 
   /** Set the maximal number of chunks to process (default: -1, -1 = all)
     *
     * @group setParam
     */
-  def setNChunks(nChunks: Int) = { set(this.nChunks, nChunks) }
+  def setNChunks(nChunks: Int): this.type = { set(this.nChunks, nChunks) }
 
   /** Set the number of parallel sequences to decode (default: 1)
     *
     * @group setParam
     */
-  def setNParallel(nParallel: Int) = { set(this.nParallel, nParallel) }
+  def setNParallel(nParallel: Int): this.type = { set(this.nParallel, nParallel) }
 
   /** Set the number of sequences to decode (default: 1)
     *
     * @group setParam
     */
-  def setNSequences(nSequences: Int) = { set(this.nSequences, nSequences) }
+  def setNSequences(nSequences: Int): this.type = { set(this.nSequences, nSequences) }
 
   /** Set the speculative decoding split probability (default: 0.1)
     *
     * @group setParam
     */
-  def setPSplit(pSplit: Float) = { set(this.pSplit, pSplit) }
+  def setPSplit(pSplit: Float): this.type = { set(this.pSplit, pSplit) }
 
   /** Set the number of layers to store in VRAM (-1 - use default)
     *
     * @group setParam
     */
-  def setNGpuLayers(nGpuLayers: Int) = { set(this.nGpuLayers, nGpuLayers) }
+  def setNGpuLayers(nGpuLayers: Int): this.type = { set(this.nGpuLayers, nGpuLayers) }
 
   /** Set the number of layers to store in VRAM for the draft model (-1 - use default)
     *
     * @group setParam
     */
-  def setNGpuLayersDraft(nGpuLayersDraft: Int) = { set(this.nGpuLayersDraft, nGpuLayersDraft) }
+  def setNGpuLayersDraft(nGpuLayersDraft: Int): this.type = { set(this.nGpuLayersDraft, nGpuLayersDraft) }
 
   /** Set how to split the model across GPUs
     *
@@ -386,85 +386,85 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setSplitMode(splitMode: Int) = { set(this.gpuSplitMode, splitMode) }
+  def setSplitMode(splitMode: Int): this.type = { set(this.gpuSplitMode, splitMode) }
 
   /** Set the GPU that is used for scratch and small tensors
     *
     * @group setParam
     */
-  def setMainGpu(mainGpu: Int) = { set(this.mainGpu, mainGpu) }
+  def setMainGpu(mainGpu: Int): this.type = { set(this.mainGpu, mainGpu) }
 
   /** Set how split tensors should be distributed across GPUs
     *
     * @group setParam
     */
-  def setTensorSplit(tensorSplit: Array[Double]) = { set(this.tensorSplit, tensorSplit) }
+  def setTensorSplit(tensorSplit: Array[Double]): this.type = { set(this.tensorSplit, tensorSplit) }
 
   /** Set usage of beam search of given width if non-zero.
     *
     * @group setParam
     */
-  def setNBeams(nBeams: Int) = { set(this.nBeams, nBeams) }
+  def setNBeams(nBeams: Int): this.type = { set(this.nBeams, nBeams) }
 
   /** Set the group-attention factor (default: 1)
     *
     * @group setParam
     */
-  def setGrpAttnN(grpAttnN: Int) = { set(this.grpAttnN, grpAttnN) }
+  def setGrpAttnN(grpAttnN: Int): this.type = { set(this.grpAttnN, grpAttnN) }
 
   /** Set the group-attention width (default: 512.0)
     *
     * @group setParam
     */
-  def setGrpAttnW(grpAttnW: Int) = { set(this.grpAttnW, grpAttnW) }
+  def setGrpAttnW(grpAttnW: Int): this.type = { set(this.grpAttnW, grpAttnW) }
 
   /** Set the RoPE base frequency, used by NTK-aware scaling (default: loaded from model)
     *
     * @group setParam
     */
-  def setRopeFreqBase(ropeFreqBase: Float) = { set(this.ropeFreqBase, ropeFreqBase) }
+  def setRopeFreqBase(ropeFreqBase: Float): this.type = { set(this.ropeFreqBase, ropeFreqBase) }
 
   /** Set the RoPE frequency scaling factor, expands context by a factor of 1/N
     *
     * @group setParam
     */
-  def setRopeFreqScale(ropeFreqScale: Float) = { set(this.ropeFreqScale, ropeFreqScale) }
+  def setRopeFreqScale(ropeFreqScale: Float): this.type = { set(this.ropeFreqScale, ropeFreqScale) }
 
   /** Set the YaRN extrapolation mix factor (default: 1.0, 0.0 = full interpolation)
     *
     * @group setParam
     */
-  def setYarnExtFactor(yarnExtFactor: Float) = { set(this.yarnExtFactor, yarnExtFactor) }
+  def setYarnExtFactor(yarnExtFactor: Float): this.type = { set(this.yarnExtFactor, yarnExtFactor) }
 
   /** Set the YaRN scale sqrt(t) or attention magnitude (default: 1.0)
     *
     * @group setParam
     */
-  def setYarnAttnFactor(yarnAttnFactor: Float) = { set(this.yarnAttnFactor, yarnAttnFactor) }
+  def setYarnAttnFactor(yarnAttnFactor: Float): this.type = { set(this.yarnAttnFactor, yarnAttnFactor) }
 
   /** Set the YaRN low correction dim or beta (default: 32.0)
     *
     * @group setParam
     */
-  def setYarnBetaFast(yarnBetaFast: Float) = { set(this.yarnBetaFast, yarnBetaFast) }
+  def setYarnBetaFast(yarnBetaFast: Float): this.type = { set(this.yarnBetaFast, yarnBetaFast) }
 
   /** Set the YaRN high correction dim or alpha (default: 1.0)
     *
     * @group setParam
     */
-  def setYarnBetaSlow(yarnBetaSlow: Float) = { set(this.yarnBetaSlow, yarnBetaSlow) }
+  def setYarnBetaSlow(yarnBetaSlow: Float): this.type = { set(this.yarnBetaSlow, yarnBetaSlow) }
 
   /** Set the YaRN original context size of model (default: 0 = model training context size)
     *
     * @group setParam
     */
-  def setYarnOrigCtx(yarnOrigCtx: Int) = { set(this.yarnOrigCtx, yarnOrigCtx) }
+  def setYarnOrigCtx(yarnOrigCtx: Int): this.type = { set(this.yarnOrigCtx, yarnOrigCtx) }
 
   /** Set the KV cache defragmentation threshold (default: -1.0, < 0 - disabled)
     *
     * @group setParam
     */
-  def setDefragmentationThreshold(defragThold: Float) = { set(this.defragThold, defragThold) }
+  def setDefragmentationThreshold(defragThold: Float): this.type = { set(this.defragThold, defragThold) }
 
   /** Set optimization strategies that help on some NUMA systems (if available)
     *
@@ -478,7 +478,7 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setNuma(numa: Int) = { set(this.numaStrategy, numa) }
+  def setNuma(numa: Int): this.type = { set(this.numaStrategy, numa) }
 
   /** Set the RoPE frequency scaling method, defaults to linear unless specified by the model.
     *
@@ -487,7 +487,7 @@ trait HasLlamaCppProperties {
     *   - 2 YARN: TODO
     * @group setParam
     */
-  def setRopeScalingType(ropeScalingType: Int) = { set(this.ropeScalingType, ropeScalingType) }
+  def setRopeScalingType(ropeScalingType: Int): this.type = { set(this.ropeScalingType, ropeScalingType) }
 
   /** Set the pooling type for embeddings, use model default if unspecified
     *
@@ -497,19 +497,19 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setPoolingType(poolingType: Int) = { set(this.poolingType, poolingType) }
+  def setPoolingType(poolingType: Int): this.type = { set(this.poolingType, poolingType) }
 
   /** Set the draft model for speculative decoding (default: unused)
     *
     * @group setParam
     */
-  def setModelDraft(modelDraft: String) = { set(this.modelDraft, modelDraft) }
+  def setModelDraft(modelDraft: String): this.type = { set(this.modelDraft, modelDraft) }
 
   /** Set a model alias
     *
     * @group setParam
     */
-  def setLookupCacheStaticFilePath(lookupCacheStatic: String) = {
+  def setLookupCacheStaticFilePath(lookupCacheStatic: String): this.type = {
     set(this.lookupCacheStatic, lookupCacheStatic)
   }
 
@@ -517,69 +517,69 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setLookupCacheDynamicFilePath(lookupCacheDynamic: String) = {
+  def setLookupCacheDynamicFilePath(lookupCacheDynamic: String): this.type = {
     set(this.lookupCacheDynamic, lookupCacheDynamic)
   }
-  //  def setLoraAdapters(Float: Map<String,> loraAdapters) = { set(this.Float, Float) }
+  //  def setLoraAdapters(Float: Map<String,> loraAdapters): this.type = { set(this.Float, Float) }
   /** Set an optional model to use as a base for the layers modified by the LoRA adapter
     *
     * @group setParam
     */
-  def setLoraBase(loraBase: String) = { set(this.loraBase, loraBase) }
+  def setLoraBase(loraBase: String): this.type = { set(this.loraBase, loraBase) }
 
   /** Whether to load model with embedding support
     *
     * @group setParam
     */
-  def setEmbedding(embedding: Boolean) = { set(this.embedding, embedding) }
+  def setEmbedding(embedding: Boolean): this.type = { set(this.embedding, embedding) }
 
   /** Whether to enable continuous batching (also called dynamic batching) (default: disabled)
     *
     * @group setParam
     */
-  def setContinuousBatching(contBatching: Boolean) = { set(this.contBatching, contBatching) }
+  def setContinuousBatching(contBatching: Boolean): this.type = { set(this.contBatching, contBatching) }
 
   /** Whether to enable Flash Attention (default: disabled)
     *
     * @group setParam
     */
-  def setFlashAttention(flashAttention: Boolean) = { set(this.flashAttention, flashAttention) }
+  def setFlashAttention(flashAttention: Boolean): this.type = { set(this.flashAttention, flashAttention) }
 
   /** Whether to add prefix BOS to user inputs, preceding the `--in-prefix` string
     *
     * @group setParam
     */
-  def setInputPrefixBos(inputPrefixBos: Boolean) = { set(this.inputPrefixBos, inputPrefixBos) }
+  def setInputPrefixBos(inputPrefixBos: Boolean): this.type = { set(this.inputPrefixBos, inputPrefixBos) }
 
   /** Whether to use memory-map model (faster load but may increase pageouts if not using mlock)
     *
     * @group setParam
     */
-  def setUseMmap(useMmap: Boolean) = { set(this.useMmap, useMmap) }
+  def setUseMmap(useMmap: Boolean): this.type = { set(this.useMmap, useMmap) }
 
   /** Whether to force the system to keep model in RAM rather than swapping or compressing
     *
     * @group setParam
     */
-  def setUseMlock(useMlock: Boolean) = { set(this.useMlock, useMlock) }
+  def setUseMlock(useMlock: Boolean): this.type = { set(this.useMlock, useMlock) }
 
   /** Whether to disable KV offload
     *
     * @group setParam
     */
-  def setNoKvOffload(noKvOffload: Boolean) = { set(this.noKvOffload, noKvOffload) }
+  def setNoKvOffload(noKvOffload: Boolean): this.type = { set(this.noKvOffload, noKvOffload) }
 
   /** Set a system prompt to use
     *
     * @group setParam
     */
-  def setSystemPrompt(systemPrompt: String) = { set(this.systemPrompt, systemPrompt) }
+  def setSystemPrompt(systemPrompt: String): this.type = { set(this.systemPrompt, systemPrompt) }
 
   /** The chat template to use (default: empty)
     *
     * @group setParam
     */
-  def setChatTemplate(chatTemplate: String) = { set(this.chatTemplate, chatTemplate) }
+  def setChatTemplate(chatTemplate: String): this.type = { set(this.chatTemplate, chatTemplate) }
 
   // ---------------- GETTERS ----------------
   /** @group getParam */
@@ -885,69 +885,69 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setInputPrefix(inputPrefix: String) = { set(this.inputPrefix, inputPrefix) }
+  def setInputPrefix(inputPrefix: String): this.type = { set(this.inputPrefix, inputPrefix) }
 
   /** Set a suffix for infilling (default: "")
     *
     * @group setParam
     */
-  def setInputSuffix(inputSuffix: String) = { set(this.inputSuffix, inputSuffix) }
+  def setInputSuffix(inputSuffix: String): this.type = { set(this.inputSuffix, inputSuffix) }
 
   /** Whether to remember the prompt to avoid reprocessing it
     *
     * @group setParam
     */
-  def setCachePrompt(cachePrompt: Boolean) = { set(this.cachePrompt, cachePrompt) }
+  def setCachePrompt(cachePrompt: Boolean): this.type = { set(this.cachePrompt, cachePrompt) }
 
   /** Set the number of tokens to predict (default: -1, -1 = infinity, -2 = until context filled)
     *
     * @group setParam
     */
-  def setNPredict(nPredict: Int) = { set(this.nPredict, nPredict) }
+  def setNPredict(nPredict: Int): this.type = { set(this.nPredict, nPredict) }
 
   /** Set top-k sampling (default: 40, 0 = disabled)
     *
     * @group setParam
     */
-  def setTopK(topK: Int) = { set(this.topK, topK) }
+  def setTopK(topK: Int): this.type = { set(this.topK, topK) }
 
   /** Set top-p sampling (default: 0.9, 1.0 = disabled)
     *
     * @group setParam
     */
-  def setTopP(topP: Float) = { set(this.topP, topP) }
+  def setTopP(topP: Float): this.type = { set(this.topP, topP) }
 
   /** Set min-p sampling (default: 0.1, 0.0 = disabled)
     *
     * @group setParam
     */
-  def setMinP(minP: Float) = { set(this.minP, minP) }
+  def setMinP(minP: Float): this.type = { set(this.minP, minP) }
 
   /** Set tail free sampling, parameter z (default: 1.0, 1.0 = disabled)
     * @group setParam
     */
-  def setTfsZ(tfsZ: Float) = { set(this.tfsZ, tfsZ) }
+  def setTfsZ(tfsZ: Float): this.type = { set(this.tfsZ, tfsZ) }
 
   /** Set locally typical sampling, parameter p (default: 1.0, 1.0 = disabled)
     *
     * @group setParam
     */
-  def setTypicalP(typicalP: Float) = { set(this.typicalP, typicalP) }
+  def setTypicalP(typicalP: Float): this.type = { set(this.typicalP, typicalP) }
 
   /** Set the temperature (default: 0.8)
     *
     * @group setParam
     */
-  def setTemperature(temperature: Float) = { set(this.temperature, temperature) }
+  def setTemperature(temperature: Float): this.type = { set(this.temperature, temperature) }
 
   /** Set the dynamic temperature range (default: 0.0, 0.0 = disabled)
     *
     * @group setParam
     */
-  def setDynamicTemperatureRange(dynatempRange: Float) = {
+  def setDynamicTemperatureRange(dynatempRange: Float): this.type = {
     set(this.dynamicTemperatureRange, dynatempRange)
   }
-  def setDynamicTemperatureExponent(dynatempExponent: Float) = {
+  def setDynamicTemperatureExponent(dynatempExponent: Float): this.type = {
     set(this.dynamicTemperatureExponent, dynatempExponent)
   }
 
@@ -955,19 +955,19 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setRepeatLastN(repeatLastN: Int) = { set(this.repeatLastN, repeatLastN) }
+  def setRepeatLastN(repeatLastN: Int): this.type = { set(this.repeatLastN, repeatLastN) }
 
   /** Set the penalty of repeated sequences of tokens (default: 1.0, 1.0 = disabled)
     *
     * @group setParam
     */
-  def setRepeatPenalty(repeatPenalty: Float) = { set(this.repeatPenalty, repeatPenalty) }
+  def setRepeatPenalty(repeatPenalty: Float): this.type = { set(this.repeatPenalty, repeatPenalty) }
 
   /** Set the repetition alpha frequency penalty (default: 0.0, 0.0 = disabled)
     *
     * @group setParam
     */
-  def setFrequencyPenalty(frequencyPenalty: Float) = {
+  def setFrequencyPenalty(frequencyPenalty: Float): this.type = {
     set(this.frequencyPenalty, frequencyPenalty)
   }
 
@@ -975,7 +975,7 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setPresencePenalty(presencePenalty: Float) = { set(this.presencePenalty, presencePenalty) }
+  def setPresencePenalty(presencePenalty: Float): this.type = { set(this.presencePenalty, presencePenalty) }
 
   /** Set MiroStat sampling strategies.
     *
@@ -985,78 +985,78 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setMiroStat(mirostat: Int) = set(this.miroStat, mirostat)
+  def setMiroStat(mirostat: Int): this.type = set(this.miroStat, mirostat)
 
   /** Set the MiroStat target entropy, parameter tau (default: 5.0)
     *
     * @group setParam
     */
-  def setMiroStatTau(mirostatTau: Float) = { set(this.miroStatTau, mirostatTau) }
+  def setMiroStatTau(mirostatTau: Float): this.type = { set(this.miroStatTau, mirostatTau) }
 
   /** Set the MiroStat learning rate, parameter eta (default: 0.1)
     *
     * @group setParam
     */
-  def setMiroStatEta(mirostatEta: Float) = { set(this.miroStatEta, mirostatEta) }
+  def setMiroStatEta(mirostatEta: Float): this.type = { set(this.miroStatEta, mirostatEta) }
 
   /** Set whether to penalize newline tokens
     *
     * @group setParam
     */
-  def setPenalizeNl(penalizeNl: Boolean) = { set(this.penalizeNl, penalizeNl) }
+  def setPenalizeNl(penalizeNl: Boolean): this.type = { set(this.penalizeNl, penalizeNl) }
 
   /** Set the number of tokens to keep from the initial prompt (default: 0, -1 = all)
     *
     * @group setParam
     */
-  def setNKeep(nKeep: Int) = { set(this.nKeep, nKeep) }
+  def setNKeep(nKeep: Int): this.type = { set(this.nKeep, nKeep) }
 
   /** Set the RNG seed (default: -1, use random seed for < 0)
     *
     * @group setParam
     */
-  def setSeed(seed: Int) = { set(this.seed, seed) }
+  def setSeed(seed: Int): this.type = { set(this.seed, seed) }
 
   /** Set the amount top tokens probabilities to output if greater than 0.
     *
     * @group setParam
     */
-  def setNProbs(nProbs: Int) = { set(this.nProbs, nProbs) }
+  def setNProbs(nProbs: Int): this.type = { set(this.nProbs, nProbs) }
 
   /** Set the amount of tokens the samplers should return at least (0 = disabled)
     *
     * @group setParam
     */
-  def setMinKeep(minKeep: Int) = { set(this.minKeep, minKeep) }
+  def setMinKeep(minKeep: Int): this.type = { set(this.minKeep, minKeep) }
 
   /** Set BNF-like grammar to constrain generations
     *
     * @group setParam
     */
-  def setGrammar(grammar: String) = { set(this.grammar, grammar) }
+  def setGrammar(grammar: String): this.type = { set(this.grammar, grammar) }
 
   /** Override which part of the prompt is penalized for repetition.
     *
     * @group setParam
     */
-  def setPenaltyPrompt(penaltyPrompt: String) = { set(this.penaltyPrompt, penaltyPrompt) }
+  def setPenaltyPrompt(penaltyPrompt: String): this.type = { set(this.penaltyPrompt, penaltyPrompt) }
 
-// TODO?  def setPenaltyPrompt(tokens: Array[Int] ) =  {set(this.penaltyPrompt, tokens)}
+// TODO?  def setPenaltyPrompt(tokens: Array[Int] ): this.type =  {set(this.penaltyPrompt, tokens)}
 
   /** Set whether to ignore end of stream token and continue generating (implies --logit-bias
     * 2-inf)
     *
     * @group setParam
     */
-  def setIgnoreEos(ignoreEos: Boolean) = { set(this.ignoreEos, ignoreEos) }
-// TODO: def setTokenIdBias(Float: Map<Integer, > logitBias) =  {set(this.Float, Float)}
-// TODO: def setTokenBias(Float: Map<String, > logitBias) =  {set(this.Float, Float)}
+  def setIgnoreEos(ignoreEos: Boolean): this.type = { set(this.ignoreEos, ignoreEos) }
+// TODO: def setTokenIdBias(Float: Map<Integer, > logitBias): this.type =  {set(this.Float, Float)}
+// TODO: def setTokenBias(Float: Map<String, > logitBias): this.type =  {set(this.Float, Float)}
 
   /** Set the token ids to disable in the completion
     *
     * @group setParam
     */
-  def setDisableTokenIds(disableTokenIds: Array[Int]) = {
+  def setDisableTokenIds(disableTokenIds: Array[Int]): this.type = {
     set(this.disableTokenIds, disableTokenIds)
   }
 
@@ -1064,14 +1064,14 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setStopStrings(stopStrings: Array[String]) = { set(this.stopStrings, stopStrings) }
-//  def setSamplers(samplers: Sampler... ) =  {set(this.samplers, samplers)}
+  def setStopStrings(stopStrings: Array[String]): this.type = { set(this.stopStrings, stopStrings) }
+//  def setSamplers(samplers: Sampler... ): this.type =  {set(this.samplers, samplers)}
 
   /** Whether or not to stream the output
     *
     * @group setParam
     */
-  def setUseChatTemplate(useChatTemplate: Boolean) = {
+  def setUseChatTemplate(useChatTemplate: Boolean): this.type = {
     set(this.useChatTemplate, useChatTemplate)
   }
 
@@ -1189,6 +1189,7 @@ trait HasLlamaCppProperties {
     repeatPenalty -> 1.0f,
     frequencyPenalty -> 0.0f,
     presencePenalty -> 0.0f,
+    miroStat -> 0,
     miroStatTau -> 5.0f,
     miroStatEta -> 0.1f,
     penalizeNl -> false,

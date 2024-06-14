@@ -18,10 +18,9 @@ package com.johnsnowlabs.nlp.gguf
 
 import com.johnsnowlabs.ml.gguf.GGUFWrapper
 import com.johnsnowlabs.nlp._
-import de.kherud.llama.args.{GpuSplitMode, MiroStat, NumaStrategy, PoolingType, RopeScalingType}
+import de.kherud.llama.args._
 import de.kherud.llama.{InferenceParameters, LlamaModel, ModelParameters}
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.ml.param.{BooleanParam, IntParam}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.SparkSession
 
@@ -193,7 +192,7 @@ class AutoGGUFModel(override val uid: String)
 trait ReadablePretrainedAutoGGUFModelModel
     extends ParamsAndFeaturesReadable[AutoGGUFModel]
     with HasPretrained[AutoGGUFModel] {
-  override val defaultModelName: Some[String] = Some("TODO")
+  override val defaultModelName: Some[String] = Some("TODO") // TODO: might not even be needed?
   override val defaultLang: String = "xx"
 
   /** Java compliant-overrides */

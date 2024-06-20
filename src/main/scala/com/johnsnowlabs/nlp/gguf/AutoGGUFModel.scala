@@ -77,20 +77,21 @@ class AutoGGUFModel(override val uid: String)
     this
   }
 
-  override def onWrite(path: String, spark: SparkSession): Unit = ???
+  override def onWrite(path: String, spark: SparkSession): Unit = {
+    super.onWrite(path, spark)
+    getModelIfNotSet.saveToFile(path)
+  }
 
   /** Completes the batch of annotations.
     *
     * @param batchedAnnotations
-    *   Audio annotations in batches
+    *   Annotations (single element arrays) in batches
     * @return
     *   Completed text sequences
     */
   override def batchAnnotate(batchedAnnotations: Seq[Array[Annotation]]): Seq[Seq[Annotation]] = {
-    batchedAnnotations.map { annotations: Array[Annotation] =>
-      println(s"Processing batch of length ${annotations.length}")
-      println(s"First prompt: ${annotations.head.result}")
-
+    val annotations: Seq[Annotation] = batchedAnnotations.flatten
+    if (annotations.nonEmpty) {
       val inferenceParams = new InferenceParameters("")
         .setInputPrefix(getInputPrefix)
         .setInputSuffix(getInputSuffix)
@@ -170,21 +171,21 @@ class AutoGGUFModel(override val uid: String)
 
       val model: LlamaModel = getModelIfNotSet.getSession(modelParams)
 
-      if (annotations.nonEmpty) {
-        val annotationsText = annotations.map(_.result)
-        val completed_texts = model.requestBatchCompletion(annotationsText, inferenceParams)
+      val annotationsText = annotations.map(_.result)
+      val completed_texts = model.requestBatchCompletion(annotationsText.toArray, inferenceParams)
 
-        val result: Seq[Annotation] = annotations.zip(completed_texts).map { case (anno, text) =>
-          new Annotation(
-            outputAnnotatorType,
-            0, // TODO Maybe prepend the original text?
-            text.length - 1,
-            text,
-            Map("prompt" -> anno.result))
+      val result: Seq[Seq[Annotation]] =
+        annotations.zip(completed_texts).map { case (anno, text) =>
+          Seq(
+            new Annotation(
+              outputAnnotatorType,
+              0, // TODO Maybe prepend the original text?
+              text.length - 1,
+              text,
+              Map("prompt" -> anno.result)))
         }
-        result
-      } else Seq.empty[Annotation]
-    }
+      result
+    } else Seq(Seq.empty[Annotation])
   }
 
 }
@@ -212,13 +213,32 @@ trait ReadAutoGGUFModelDLModel {
 
   val suffix: String = "TODO"
 
-  def readModel(instance: AutoGGUFModel, path: String, spark: SparkSession): Unit = ???
+  def readModel(instance: AutoGGUFModel, path: String, spark: SparkSession): Unit = {
+    // TODO: path is the folder name, not the file name
+    def findGGUFModelInFolder(): String = {
+      val folder = new java.io.File(path)
+      if (folder.exists && folder.isDirectory) {
+        folder.listFiles
+          .filter(_.isFile)
+          .filter(_.getName.endsWith(".gguf"))
+          .map(_.getAbsolutePath)
+          .headOption // Should only be one file
+          .getOrElse(throw new IllegalArgumentException(s"Could not find GGUF model in $path"))
+      } else {
+        throw new IllegalArgumentException(s"Path $path is not a directory")
+      }
+    }
+
+    val model = AutoGGUFModel.loadSavedModel(findGGUFModelInFolder(), spark)
+    instance.setModelIfNotSet(spark, model.getModelIfNotSet)
+  }
+
   addReader(readModel)
 
   def loadSavedModel(modelPath: String, spark: SparkSession): AutoGGUFModel = {
     // TODO copyToLocal and potentially enable download from HF-URLS
     // val localPath: String = ResourceHelper.copyToLocal(path)
-    // TODO: extract parameters
+    // TODO: extract parameters (which ones actually?)
     val annotatorModel = new AutoGGUFModel()
 
     annotatorModel.setModelIfNotSet(spark, GGUFWrapper.read(spark, modelPath))

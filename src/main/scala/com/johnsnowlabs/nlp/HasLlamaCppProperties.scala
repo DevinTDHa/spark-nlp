@@ -97,12 +97,12 @@ trait HasLlamaCppProperties {
 
   /** Set how to split the model across GPUs
     *
-    * 0. NONE: No GPU split
-    *   1. LAYER: Split the model across GPUs by layer 2. ROW: Split the model across GPUs by rows
+    *   - 0 NONE: No GPU split
+    *   - 1 LAYER: Split the model across GPUs by layer
+    *   - 2 ROW: Split the model across GPUs by rows
     *
     * @group param
     */
-  /** @group param */
   val gpuSplitMode = new IntParam(this, "gpuSplitMode", "Set how to split the model across GPUs")
 
   /** @group param */
@@ -377,7 +377,9 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setNGpuLayersDraft(nGpuLayersDraft: Int): this.type = { set(this.nGpuLayersDraft, nGpuLayersDraft) }
+  def setNGpuLayersDraft(nGpuLayersDraft: Int): this.type = {
+    set(this.nGpuLayersDraft, nGpuLayersDraft)
+  }
 
   /** Set how to split the model across GPUs
     *
@@ -398,7 +400,9 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setTensorSplit(tensorSplit: Array[Double]): this.type = { set(this.tensorSplit, tensorSplit) }
+  def setTensorSplit(tensorSplit: Array[Double]): this.type = {
+    set(this.tensorSplit, tensorSplit)
+  }
 
   /** Set usage of beam search of given width if non-zero.
     *
@@ -428,19 +432,25 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setRopeFreqScale(ropeFreqScale: Float): this.type = { set(this.ropeFreqScale, ropeFreqScale) }
+  def setRopeFreqScale(ropeFreqScale: Float): this.type = {
+    set(this.ropeFreqScale, ropeFreqScale)
+  }
 
   /** Set the YaRN extrapolation mix factor (default: 1.0, 0.0 = full interpolation)
     *
     * @group setParam
     */
-  def setYarnExtFactor(yarnExtFactor: Float): this.type = { set(this.yarnExtFactor, yarnExtFactor) }
+  def setYarnExtFactor(yarnExtFactor: Float): this.type = {
+    set(this.yarnExtFactor, yarnExtFactor)
+  }
 
   /** Set the YaRN scale sqrt(t) or attention magnitude (default: 1.0)
     *
     * @group setParam
     */
-  def setYarnAttnFactor(yarnAttnFactor: Float): this.type = { set(this.yarnAttnFactor, yarnAttnFactor) }
+  def setYarnAttnFactor(yarnAttnFactor: Float): this.type = {
+    set(this.yarnAttnFactor, yarnAttnFactor)
+  }
 
   /** Set the YaRN low correction dim or beta (default: 32.0)
     *
@@ -464,7 +474,9 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setDefragmentationThreshold(defragThold: Float): this.type = { set(this.defragThold, defragThold) }
+  def setDefragmentationThreshold(defragThold: Float): this.type = {
+    set(this.defragThold, defragThold)
+  }
 
   /** Set optimization strategies that help on some NUMA systems (if available)
     *
@@ -487,7 +499,9 @@ trait HasLlamaCppProperties {
     *   - 2 YARN: TODO
     * @group setParam
     */
-  def setRopeScalingType(ropeScalingType: Int): this.type = { set(this.ropeScalingType, ropeScalingType) }
+  def setRopeScalingType(ropeScalingType: Int): this.type = {
+    set(this.ropeScalingType, ropeScalingType)
+  }
 
   /** Set the pooling type for embeddings, use model default if unspecified
     *
@@ -537,19 +551,25 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setContinuousBatching(contBatching: Boolean): this.type = { set(this.contBatching, contBatching) }
+  def setContinuousBatching(contBatching: Boolean): this.type = {
+    set(this.contBatching, contBatching)
+  }
 
   /** Whether to enable Flash Attention (default: disabled)
     *
     * @group setParam
     */
-  def setFlashAttention(flashAttention: Boolean): this.type = { set(this.flashAttention, flashAttention) }
+  def setFlashAttention(flashAttention: Boolean): this.type = {
+    set(this.flashAttention, flashAttention)
+  }
 
   /** Whether to add prefix BOS to user inputs, preceding the `--in-prefix` string
     *
     * @group setParam
     */
-  def setInputPrefixBos(inputPrefixBos: Boolean): this.type = { set(this.inputPrefixBos, inputPrefixBos) }
+  def setInputPrefixBos(inputPrefixBos: Boolean): this.type = {
+    set(this.inputPrefixBos, inputPrefixBos)
+  }
 
   /** Whether to use memory-map model (faster load but may increase pageouts if not using mlock)
     *
@@ -961,7 +981,9 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setRepeatPenalty(repeatPenalty: Float): this.type = { set(this.repeatPenalty, repeatPenalty) }
+  def setRepeatPenalty(repeatPenalty: Float): this.type = {
+    set(this.repeatPenalty, repeatPenalty)
+  }
 
   /** Set the repetition alpha frequency penalty (default: 0.0, 0.0 = disabled)
     *
@@ -975,7 +997,9 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setPresencePenalty(presencePenalty: Float): this.type = { set(this.presencePenalty, presencePenalty) }
+  def setPresencePenalty(presencePenalty: Float): this.type = {
+    set(this.presencePenalty, presencePenalty)
+  }
 
   /** Set MiroStat sampling strategies.
     *
@@ -1039,7 +1063,9 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setPenaltyPrompt(penaltyPrompt: String): this.type = { set(this.penaltyPrompt, penaltyPrompt) }
+  def setPenaltyPrompt(penaltyPrompt: String): this.type = {
+    set(this.penaltyPrompt, penaltyPrompt)
+  }
 
 // TODO?  def setPenaltyPrompt(tokens: Array[Int] ): this.type =  {set(this.penaltyPrompt, tokens)}
 
@@ -1064,7 +1090,9 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setStopStrings(stopStrings: Array[String]): this.type = { set(this.stopStrings, stopStrings) }
+  def setStopStrings(stopStrings: Array[String]): this.type = {
+    set(this.stopStrings, stopStrings)
+  }
 //  def setSamplers(samplers: Sampler... ): this.type =  {set(this.samplers, samplers)}
 
   /** Whether or not to stream the output
@@ -1175,7 +1203,7 @@ trait HasLlamaCppProperties {
   setDefault(
     inputPrefix -> "",
     inputSuffix -> "",
-    cachePrompt -> false,
+    cachePrompt -> false, // TODO: is this a problem, if we change the prompt a lot?
     nPredict -> -1,
     topK -> 40,
     topP -> 0.9f,

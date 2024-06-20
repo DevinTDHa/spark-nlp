@@ -24,7 +24,9 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.SparkSession
 
-/** TODO
+/** Annotator that uses the llama.cpp library to generate text completions.
+  *
+  * It requires a GGUF model, which needs to be provided either by TODO or TODO.
   *
   * ==Example==
   *
@@ -92,82 +94,11 @@ class AutoGGUFModel(override val uid: String)
   override def batchAnnotate(batchedAnnotations: Seq[Array[Annotation]]): Seq[Seq[Annotation]] = {
     val annotations: Seq[Annotation] = batchedAnnotations.flatten
     if (annotations.nonEmpty) {
-      val inferenceParams = new InferenceParameters("")
-        .setInputPrefix(getInputPrefix)
-        .setInputSuffix(getInputSuffix)
-        .setCachePrompt(getCachePrompt)
-        .setNPredict(getNPredict)
-        .setTopK(getTopK)
-        .setTopP(getTopP)
-        .setMinP(getMinP)
-        .setTfsZ(getTfsZ)
-        .setTypicalP(getTypicalP)
-        .setTemperature(getTemperature)
-        .setDynamicTemperatureRange(getDynamicTemperatureRange)
-        .setDynamicTemperatureExponent(getDynamicTemperatureExponent)
-        .setRepeatLastN(getRepeatLastN)
-        .setRepeatPenalty(getRepeatPenalty)
-        .setFrequencyPenalty(getFrequencyPenalty)
-        .setPresencePenalty(getPresencePenalty)
-        .setMiroStat(MiroStat.values.apply(getMiroStat))
-        .setMiroStatTau(getMiroStatTau)
-        .setMiroStatEta(getMiroStatEta)
-        .setPenalizeNl(getPenalizeNl)
-        .setNKeep(getNKeep)
-        .setSeed(getSeed)
-        .setNProbs(getNProbs)
-        .setMinKeep(getMinKeep)
-        .setGrammar(getGrammar)
-        .setPenaltyPrompt(getPenaltyPrompt)
-        .setIgnoreEos(getIgnoreEos)
-        .setStopStrings(getStopStrings: _*)
-        .setUseChatTemplate(getUseChatTemplate)
 
-      val modelParams = new ModelParameters()
-        .setNThreads(getNThreads)
-        .setNThreadsDraft(getNThreadsDraft)
-        .setNThreadsBatch(getNThreadsBatch)
-        .setNThreadsBatchDraft(getNThreadsBatchDraft)
-        .setNCtx(getNCtx)
-        .setNBatch(getNBatch)
-        .setNUbatch(getNUbatch)
-        .setNDraft(getNDraft)
-        .setNChunks(getNChunks)
-        .setNParallel(getNParallel)
-        .setNSequences(getNSequences)
-        .setPSplit(getPSplit)
-        .setNGpuLayers(getNGpuLayers)
-        .setNGpuLayersDraft(getNGpuLayersDraft)
-        .setSplitMode(GpuSplitMode.values()(getSplitMode))
-        .setMainGpu(getMainGpu)
-        .setTensorSplit(getTensorSplit.map(_.toFloat))
-        .setNBeams(getNBeams)
-        .setGrpAttnN(getGrpAttnN)
-        .setGrpAttnW(getGrpAttnW)
-        .setRopeFreqBase(getRopeFreqBase)
-        .setRopeFreqScale(getRopeFreqScale)
-        .setYarnExtFactor(getYarnExtFactor)
-        .setYarnAttnFactor(getYarnAttnFactor)
-        .setYarnBetaFast(getYarnBetaFast)
-        .setYarnBetaSlow(getYarnBetaSlow)
-        .setYarnOrigCtx(getYarnOrigCtx)
-        .setDefragmentationThreshold(getDefragmentationThreshold)
-        .setNuma(NumaStrategy.values()(getNuma))
-        .setRopeScalingType(RopeScalingType.values()(getRopeScalingType))
-        .setPoolingType(PoolingType.values()(getPoolingType))
-        .setModelDraft(getModelDraft)
-        .setLookupCacheStaticFilePath(getLookupCacheStaticFilePath)
-        .setLookupCacheDynamicFilePath(getLookupCacheDynamicFilePath)
-        .setLoraBase(getLoraBase)
-        .setEmbedding(getEmbedding)
-        .setContinuousBatching(getContinuousBatching)
-        .setFlashAttention(getFlashAttention)
-        .setInputPrefixBos(getInputPrefixBos)
-        .setUseMmap(getUseMmap)
-        .setUseMlock(getUseMlock)
-        .setNoKvOffload(getNoKvOffload)
-        .setSystemPrompt(getSystemPrompt)
-        .setChatTemplate(getChatTemplate)
+      val modelParams = getModelParameters
+      val inferenceParams = getInferenceParameters
+
+      println("DEBUG DHA: modelParams: " + modelParams.toString)
 
       val model: LlamaModel = getModelIfNotSet.getSession(modelParams)
 

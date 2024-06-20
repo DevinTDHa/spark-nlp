@@ -1,14 +1,8 @@
 package com.johnsnowlabs.nlp
 
-import org.apache.spark.ml.param.{
-  BooleanParam,
-  DoubleArrayParam,
-  FloatParam,
-  IntArrayParam,
-  IntParam,
-  Param,
-  StringArrayParam
-}
+import de.kherud.llama.args.{GpuSplitMode, MiroStat, NumaStrategy, PoolingType, RopeScalingType}
+import de.kherud.llama.{InferenceParameters, ModelParameters}
+import org.apache.spark.ml.param._
 
 /** Parameters to configure beam search text generation. */
 trait HasLlamaCppProperties {
@@ -97,13 +91,14 @@ trait HasLlamaCppProperties {
 
   /** Set how to split the model across GPUs
     *
-    *   - 0 NONE: No GPU split
-    *   - 1 LAYER: Split the model across GPUs by layer
-    *   - 2 ROW: Split the model across GPUs by rows
+    *   - NONE: No GPU split
+    *   - LAYER: Split the model across GPUs by layer
+    *   - ROW: Split the model across GPUs by rows
     *
     * @group param
     */
-  val gpuSplitMode = new IntParam(this, "gpuSplitMode", "Set how to split the model across GPUs")
+  val gpuSplitMode =
+    new Param[String](this, "gpuSplitMode", "Set how to split the model across GPUs")
 
   /** @group param */
   val mainGpu = new IntParam(
@@ -170,36 +165,36 @@ trait HasLlamaCppProperties {
     "Set the YaRN original context size of model (default: 0 = model training context size)")
 
   /** @group param */
-  val defragThold = new FloatParam(
+  val defragmentationThreshold = new FloatParam(
     this,
-    "defragThold",
+    "defragmentationThreshold",
     "Set the KV cache defragmentation threshold (default: -1.0, &lt; 0 - disabled)")
 
   /** Set optimization strategies that help on some NUMA systems (if available)
     *
     * Available Strategies:
     *
-    *   - 0 DISABLED: No NUMA optimizations
-    *   - 1 DISTRIBUTE: spread execution evenly over all
-    *   - 2 ISOLATE: only spawn threads on CPUs on the node that execution started on
-    *   - 3 NUMA_CTL: use the CPU map provided by numactl
-    *   - 4 MIRROR: TODO
+    *   - DISABLED: No NUMA optimizations
+    *   - DISTRIBUTE: spread execution evenly over all
+    *   - ISOLATE: only spawn threads on CPUs on the node that execution started on
+    *   - NUMA_CTL: use the CPU map provided by numactl
+    *   - MIRROR: TODO
     *
     * @group param
     */
-  val numaStrategy = new IntParam(
+  val numaStrategy = new Param[String](
     this,
     "numaStrategy",
     "Set optimization strategies that help on some NUMA systems (if available)")
 
   /** Set the RoPE frequency scaling method, defaults to linear unless specified by the model.
     *
-    *   - 0 UNSPECIFIED: TODO
-    *   - 1 LINEAR: Linear scaling
-    *   - 2 YARN: TODO
+    *   - UNSPECIFIED: TODO
+    *   - LINEAR: Linear scaling
+    *   - YARN: TODO
     * @group param
     */
-  val ropeScalingType = new IntParam(
+  val ropeScalingType = new Param[String](
     this,
     "ropeScalingType",
     "Set the RoPE frequency scaling method, defaults to linear unless specified by the model")
@@ -212,7 +207,7 @@ trait HasLlamaCppProperties {
     *
     * @group param
     */
-  val poolingType = new IntParam(
+  val poolingType = new Param[String](
     this,
     "poolingType",
     "Set the pooling type for embeddings, use model default if unspecified")
@@ -226,17 +221,17 @@ trait HasLlamaCppProperties {
   /** @group param
     * TODO: Needed?
     */
-  val lookupCacheStatic = new Param[String](
+  val lookupCacheStaticFilePath = new Param[String](
     this,
-    "lookupCacheStatic",
+    "lookupCacheStaticFilePath",
     "Set path to static lookup cache to use for lookup decoding (not updated by generation)")
 
   /** @group param
     * TODO: Needed?
     */
-  val lookupCacheDynamic = new Param[String](
+  val lookupCacheDynamicFilePath = new Param[String](
     this,
-    "lookupCacheDynamic",
+    "lookupCacheDynamicFilePath",
     "Set path to dynamic lookup cache to use for lookup decoding (updated by generation)")
   //    * Set LoRA adapters to use (implies --no-mmap).
   /** @group param */
@@ -252,10 +247,10 @@ trait HasLlamaCppProperties {
     new BooleanParam(this, "embedding", "Whether to load model with embedding support")
 
   /** @group param */
-  val contBatching = new BooleanParam(
+  val continuousBatching = new BooleanParam(
     this,
-    "contBatching",
-    "Whether to enable continuous batching (also called dynamic batching) (default: disabled)")
+    "continuousBatching",
+    "Whether to enable continuous batching (also called dynamic batching) (default: enabled)")
 
   /** @group param */
   val flashAttention = new BooleanParam(
@@ -383,12 +378,12 @@ trait HasLlamaCppProperties {
 
   /** Set how to split the model across GPUs
     *
-    * 0. NONE: No GPU split
-    *   1. LAYER: Split the model across GPUs by layer 2. ROW: Split the model across GPUs by rows
+    *   - NONE: No GPU split
+    * -LAYER: Split the model across GPUs by layer 2. ROW: Split the model across GPUs by rows
     *
     * @group setParam
     */
-  def setSplitMode(splitMode: Int): this.type = { set(this.gpuSplitMode, splitMode) }
+  def setGPUSplitMode(splitMode: String): this.type = { set(this.gpuSplitMode, splitMode) }
 
   /** Set the GPU that is used for scratch and small tensors
     *
@@ -475,43 +470,43 @@ trait HasLlamaCppProperties {
     * @group setParam
     */
   def setDefragmentationThreshold(defragThold: Float): this.type = {
-    set(this.defragThold, defragThold)
+    set(this.defragmentationThreshold, defragThold)
   }
 
   /** Set optimization strategies that help on some NUMA systems (if available)
     *
     * Available Strategies:
     *
-    *   - 0 DISABLED: No NUMA optimizations
-    *   - 1 DISTRIBUTE: spread execution evenly over all
-    *   - 2 ISOLATE: only spawn threads on CPUs on the node that execution started on
-    *   - 3 NUMA_CTL: use the CPU map provided by numactl
-    *   - 4 MIRROR: TODO
+    *   - DISABLED: No NUMA optimizations
+    *   - DISTRIBUTE: spread execution evenly over all
+    *   - ISOLATE: only spawn threads on CPUs on the node that execution started on
+    *   - NUMA_CTL: use the CPU map provided by numactl
+    *   - MIRROR: TODO
     *
     * @group setParam
     */
-  def setNuma(numa: Int): this.type = { set(this.numaStrategy, numa) }
+  def setNumaStrategy(numa: String): this.type = { set(this.numaStrategy, numa) }
 
   /** Set the RoPE frequency scaling method, defaults to linear unless specified by the model.
     *
-    *   - 0 UNSPECIFIED: TODO
-    *   - 1 LINEAR: Linear scaling
-    *   - 2 YARN: TODO
+    *   - UNSPECIFIED: TODO
+    *   - LINEAR: Linear scaling
+    *   - YARN: TODO
     * @group setParam
     */
-  def setRopeScalingType(ropeScalingType: Int): this.type = {
+  def setRopeScalingType(ropeScalingType: String): this.type = {
     set(this.ropeScalingType, ropeScalingType)
   }
 
   /** Set the pooling type for embeddings, use model default if unspecified
     *
-    *   - 0 UNSPECIFIED: TODO
-    *   - 1 MEAN: Mean Pooling
-    *   - 2 CLS: CLS Pooling
+    *   - UNSPECIFIED: TODO
+    *   - MEAN: Mean Pooling
+    *   - CLS: CLS Pooling
     *
     * @group setParam
     */
-  def setPoolingType(poolingType: Int): this.type = { set(this.poolingType, poolingType) }
+  def setPoolingType(poolingType: String): this.type = { set(this.poolingType, poolingType) }
 
   /** Set the draft model for speculative decoding (default: unused)
     *
@@ -523,16 +518,16 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setLookupCacheStaticFilePath(lookupCacheStatic: String): this.type = {
-    set(this.lookupCacheStatic, lookupCacheStatic)
+  def setLookupCacheStaticFilePath(lookupCacheStaticFilePath: String): this.type = {
+    set(this.lookupCacheStaticFilePath, lookupCacheStaticFilePath)
   }
 
   /** Set a model alias
     *
     * @group setParam
     */
-  def setLookupCacheDynamicFilePath(lookupCacheDynamic: String): this.type = {
-    set(this.lookupCacheDynamic, lookupCacheDynamic)
+  def setLookupCacheDynamicFilePath(lookupCacheDynamicFilePath: String): this.type = {
+    set(this.lookupCacheDynamicFilePath, lookupCacheDynamicFilePath)
   }
   //  def setLoraAdapters(Float: Map<String,> loraAdapters): this.type = { set(this.Float, Float) }
   /** Set an optional model to use as a base for the layers modified by the LoRA adapter
@@ -551,8 +546,8 @@ trait HasLlamaCppProperties {
     *
     * @group setParam
     */
-  def setContinuousBatching(contBatching: Boolean): this.type = {
-    set(this.contBatching, contBatching)
+  def setContinuousBatching(continuousBatching: Boolean): this.type = {
+    set(this.continuousBatching, continuousBatching)
   }
 
   /** Whether to enable Flash Attention (default: disabled)
@@ -645,7 +640,7 @@ trait HasLlamaCppProperties {
   def getNGpuLayersDraft: Int = $(nGpuLayersDraft)
 
   /** @group getParam */
-  def getSplitMode: Int = $(gpuSplitMode)
+  def getSplitMode: String = $(gpuSplitMode)
 
   /** @group getParam */
   def getMainGpu: Int = $(mainGpu)
@@ -684,25 +679,25 @@ trait HasLlamaCppProperties {
   def getYarnOrigCtx: Int = $(yarnOrigCtx)
 
   /** @group getParam */
-  def getDefragmentationThreshold: Float = $(defragThold)
+  def getDefragmentationThreshold: Float = $(defragmentationThreshold)
 
   /** @group getParam */
-  def getNuma: Int = $(numaStrategy)
+  def getNuma: String = $(numaStrategy)
 
   /** @group getParam */
-  def getRopeScalingType: Int = $(ropeScalingType)
+  def getRopeScalingType: String = $(ropeScalingType)
 
   /** @group getParam */
-  def getPoolingType: Int = $(poolingType)
+  def getPoolingType: String = $(poolingType)
 
   /** @group getParam */
   def getModelDraft: String = $(modelDraft)
 
   /** @group getParam */
-  def getLookupCacheStaticFilePath: String = $(lookupCacheStatic)
+  def getLookupCacheStaticFilePath: String = $(lookupCacheStaticFilePath)
 
   /** @group getParam */
-  def getLookupCacheDynamicFilePath: String = $(lookupCacheDynamic)
+  def getLookupCacheDynamicFilePath: String = $(lookupCacheDynamicFilePath)
 
   /** @group getParam */
   //  def getLoraAdapters : Map= ???
@@ -713,7 +708,7 @@ trait HasLlamaCppProperties {
   def getEmbedding: Boolean = $(embedding)
 
   /** @group getParam */
-  def getContinuousBatching: Boolean = $(contBatching)
+  def getContinuousBatching: Boolean = $(continuousBatching)
 
   /** @group getParam */
   def getFlashAttention: Boolean = $(flashAttention)
@@ -821,7 +816,7 @@ trait HasLlamaCppProperties {
     "Set the repetition alpha presence penalty (default: 0.0, 0.0 = disabled)")
 
   /** @group param */
-  val miroStat = new IntParam(this, "miroStat", "Set MiroStat sampling strategies.")
+  val miroStat = new Param[String](this, "miroStat", "Set MiroStat sampling strategies.")
 
   /** @group param */
   val miroStatTau = new FloatParam(
@@ -1003,13 +998,13 @@ trait HasLlamaCppProperties {
 
   /** Set MiroStat sampling strategies.
     *
-    *   - 0 DISABLED: No MiroStat
-    *   - 1 V1: MiroStat V1
-    *   - 2 V2: MiroStat V2
+    *   - DISABLED: No MiroStat
+    *   - V1: MiroStat V1
+    *   - V2: MiroStat V2
     *
     * @group setParam
     */
-  def setMiroStat(mirostat: Int): this.type = set(this.miroStat, mirostat)
+  def setMiroStat(mirostat: String): this.type = set(this.miroStat, mirostat)
 
   /** Set the MiroStat target entropy, parameter tau (default: 5.0)
     *
@@ -1153,7 +1148,7 @@ trait HasLlamaCppProperties {
   def getPresencePenalty: Float = $(presencePenalty)
 
   /** @group getParam */
-  def getMiroStat: Int = $(miroStat)
+  def getMiroStat: String = $(miroStat)
 
   /** @group getParam */
   def getMiroStatTau: Float = $(miroStatTau)
@@ -1200,79 +1195,99 @@ trait HasLlamaCppProperties {
   /** @group getParam */
   def getUseChatTemplate: Boolean = $(useChatTemplate)
 
-  setDefault(
-    inputPrefix -> "",
-    inputSuffix -> "",
-    cachePrompt -> false, // TODO: is this a problem, if we change the prompt a lot?
-    nPredict -> -1,
-    topK -> 40,
-    topP -> 0.9f,
-    minP -> 0.1f,
-    tfsZ -> 1.0f,
-    typicalP -> 1.0f,
-    temperature -> 0.8f,
-    dynamicTemperatureRange -> 0.0f,
-    dynamicTemperatureExponent -> 1.0f,
-    repeatLastN -> 64,
-    repeatPenalty -> 1.0f,
-    frequencyPenalty -> 0.0f,
-    presencePenalty -> 0.0f,
-    miroStat -> 0,
-    miroStatTau -> 5.0f,
-    miroStatEta -> 0.1f,
-    penalizeNl -> false,
-    nKeep -> 0,
-    seed -> -1,
-    nProbs -> 0,
-    minKeep -> 0,
-    grammar -> "",
-    penaltyPrompt -> "",
-    ignoreEos -> false,
-    disableTokenIds -> Array[Int](),
-    stopStrings -> Array[String](),
-    useChatTemplate -> false,
-    nThreads -> 8,
-    nThreadsDraft -> 8,
-    nThreadsBatch -> 8,
-    nThreadsBatchDraft -> 8,
-    nCtx -> 512,
-    nBatch -> 32,
-    nUbatch -> 32,
-    nDraft -> 5,
-    nChunks -> -1,
-    nParallel -> 1,
-    nSequences -> 1,
-    pSplit -> 0.1f,
-    nGpuLayers -> -1,
-    nGpuLayersDraft -> -1,
-    gpuSplitMode -> 0,
-    mainGpu -> 0,
-    tensorSplit -> Array[Double](),
-    nBeams -> 0,
-    grpAttnN -> 1,
-    grpAttnW -> 512,
-    ropeFreqBase -> 1.0f,
-    ropeFreqScale -> 1.0f,
-    yarnExtFactor -> 1.0f,
-    yarnAttnFactor -> 1.0f,
-    yarnBetaFast -> 32.0f,
-    yarnBetaSlow -> 1.0f,
-    yarnOrigCtx -> 0,
-    defragThold -> -1.0f,
-    numaStrategy -> 0,
-    ropeScalingType -> 0,
-    poolingType -> 0,
-    modelDraft -> "",
-    lookupCacheStatic -> "",
-    lookupCacheDynamic -> "",
-    loraBase -> "",
-    embedding -> false,
-    contBatching -> false,
-    flashAttention -> false,
-    inputPrefixBos -> false,
-    useMmap -> false,
-    useMlock -> false,
-    noKvOffload -> false,
-    systemPrompt -> "",
-    chatTemplate -> "")
+  setDefault(continuousBatching -> true)
+
+  protected def getModelParameters: ModelParameters = {
+    val modelParameters = new ModelParameters()
+    if (isDefined(nThreads)) modelParameters.setNThreads($(nThreads))
+    if (isDefined(nThreadsDraft)) modelParameters.setNThreadsDraft($(nThreadsDraft))
+    if (isDefined(nThreadsBatch)) modelParameters.setNThreadsBatch($(nThreadsBatch))
+    if (isDefined(nThreadsBatchDraft))
+      modelParameters.setNThreadsBatchDraft($(nThreadsBatchDraft))
+    if (isDefined(nCtx)) modelParameters.setNCtx($(nCtx))
+    if (isDefined(nBatch)) modelParameters.setNBatch($(nBatch))
+    if (isDefined(nUbatch)) modelParameters.setNUbatch($(nUbatch))
+    if (isDefined(nDraft)) modelParameters.setNDraft($(nDraft))
+    if (isDefined(nChunks)) modelParameters.setNChunks($(nChunks))
+    if (isDefined(nParallel)) modelParameters.setNParallel($(nParallel))
+    if (isDefined(nSequences)) modelParameters.setNSequences($(nSequences))
+    if (isDefined(pSplit)) modelParameters.setPSplit($(pSplit))
+    if (isDefined(nGpuLayers)) modelParameters.setNGpuLayers($(nGpuLayers))
+    if (isDefined(nGpuLayersDraft)) modelParameters.setNGpuLayersDraft($(nGpuLayersDraft))
+    if (isDefined(gpuSplitMode))
+      modelParameters.setSplitMode(GpuSplitMode.valueOf($(gpuSplitMode)))
+    if (isDefined(mainGpu)) modelParameters.setMainGpu($(mainGpu))
+    if (isDefined(tensorSplit)) modelParameters.setTensorSplit($(tensorSplit).map(_.toFloat))
+    if (isDefined(nBeams)) modelParameters.setNBeams($(nBeams))
+    if (isDefined(grpAttnN)) modelParameters.setGrpAttnN($(grpAttnN))
+    if (isDefined(grpAttnW)) modelParameters.setGrpAttnW($(grpAttnW))
+    if (isDefined(ropeFreqBase)) modelParameters.setRopeFreqBase($(ropeFreqBase))
+    if (isDefined(ropeFreqScale)) modelParameters.setRopeFreqScale($(ropeFreqScale))
+    if (isDefined(yarnExtFactor)) modelParameters.setYarnExtFactor($(yarnExtFactor))
+    if (isDefined(yarnAttnFactor)) modelParameters.setYarnAttnFactor($(yarnAttnFactor))
+    if (isDefined(yarnBetaFast)) modelParameters.setYarnBetaFast($(yarnBetaFast))
+    if (isDefined(yarnBetaSlow)) modelParameters.setYarnBetaSlow($(yarnBetaSlow))
+    if (isDefined(yarnOrigCtx)) modelParameters.setYarnOrigCtx($(yarnOrigCtx))
+    if (isDefined(defragmentationThreshold))
+      modelParameters.setDefragmentationThreshold($(defragmentationThreshold))
+    if (isDefined(numaStrategy)) modelParameters.setNuma(NumaStrategy.valueOf($(numaStrategy)))
+    if (isDefined(ropeScalingType))
+      modelParameters.setRopeScalingType(RopeScalingType.valueOf($(ropeScalingType)))
+    if (isDefined(poolingType))
+      modelParameters.setPoolingType(PoolingType.valueOf($(poolingType)))
+    if (isDefined(modelDraft)) modelParameters.setModelDraft($(modelDraft))
+    if (isDefined(lookupCacheStaticFilePath))
+      modelParameters.setLookupCacheStaticFilePath($(lookupCacheStaticFilePath))
+    if (isDefined(lookupCacheDynamicFilePath))
+      modelParameters.setLookupCacheDynamicFilePath($(lookupCacheDynamicFilePath))
+    if (isDefined(loraBase)) modelParameters.setLoraBase($(loraBase))
+    if (isDefined(embedding)) modelParameters.setEmbedding($(embedding))
+    if (isDefined(continuousBatching))
+      modelParameters.setContinuousBatching($(continuousBatching))
+    if (isDefined(flashAttention)) modelParameters.setFlashAttention($(flashAttention))
+    if (isDefined(inputPrefixBos)) modelParameters.setInputPrefixBos($(inputPrefixBos))
+    if (isDefined(useMmap)) modelParameters.setUseMmap($(useMmap))
+    if (isDefined(useMlock)) modelParameters.setUseMlock($(useMlock))
+    if (isDefined(noKvOffload)) modelParameters.setNoKvOffload($(noKvOffload))
+    if (isDefined(systemPrompt)) modelParameters.setSystemPrompt($(systemPrompt))
+    if (isDefined(chatTemplate)) modelParameters.setChatTemplate($(chatTemplate))
+
+    modelParameters
+  }
+
+  protected def getInferenceParameters: InferenceParameters = {
+    val inferenceParams = new InferenceParameters("")
+    if (isDefined(inputSuffix)) inferenceParams.setInputSuffix($(inputSuffix))
+    if (isDefined(cachePrompt)) inferenceParams.setCachePrompt($(cachePrompt))
+    if (isDefined(nPredict)) inferenceParams.setNPredict($(nPredict))
+    if (isDefined(topK)) inferenceParams.setTopK($(topK))
+    if (isDefined(topP)) inferenceParams.setTopP($(topP))
+    if (isDefined(minP)) inferenceParams.setMinP($(minP))
+    if (isDefined(tfsZ)) inferenceParams.setTfsZ($(tfsZ))
+    if (isDefined(typicalP)) inferenceParams.setTypicalP($(typicalP))
+    if (isDefined(temperature)) inferenceParams.setTemperature($(temperature))
+    if (isDefined(dynamicTemperatureRange))
+      inferenceParams.setDynamicTemperatureRange($(dynamicTemperatureRange))
+    if (isDefined(dynamicTemperatureExponent))
+      inferenceParams.setDynamicTemperatureExponent($(dynamicTemperatureExponent))
+    if (isDefined(repeatLastN)) inferenceParams.setRepeatLastN($(repeatLastN))
+    if (isDefined(repeatPenalty)) inferenceParams.setRepeatPenalty($(repeatPenalty))
+    if (isDefined(frequencyPenalty)) inferenceParams.setFrequencyPenalty($(frequencyPenalty))
+    if (isDefined(presencePenalty)) inferenceParams.setPresencePenalty($(presencePenalty))
+    if (isDefined(miroStat)) inferenceParams.setMiroStat(MiroStat.valueOf($(miroStat)))
+    if (isDefined(miroStatTau)) inferenceParams.setMiroStatTau($(miroStatTau))
+    if (isDefined(miroStatEta)) inferenceParams.setMiroStatEta($(miroStatEta))
+    if (isDefined(penalizeNl)) inferenceParams.setPenalizeNl($(penalizeNl))
+    if (isDefined(nKeep)) inferenceParams.setNKeep($(nKeep))
+    if (isDefined(seed)) inferenceParams.setSeed($(seed))
+    if (isDefined(nProbs)) inferenceParams.setNProbs($(nProbs))
+    if (isDefined(minKeep)) inferenceParams.setMinKeep($(minKeep))
+    if (isDefined(grammar)) inferenceParams.setGrammar($(grammar))
+    if (isDefined(penaltyPrompt)) inferenceParams.setPenaltyPrompt($(penaltyPrompt))
+    if (isDefined(ignoreEos)) inferenceParams.setIgnoreEos($(ignoreEos))
+    if (isDefined(stopStrings)) inferenceParams.setStopStrings($(stopStrings): _*)
+    if (isDefined(useChatTemplate)) inferenceParams.setUseChatTemplate($(useChatTemplate))
+
+    inferenceParams
+  }
 }

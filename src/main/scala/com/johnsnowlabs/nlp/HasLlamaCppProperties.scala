@@ -64,10 +64,6 @@ trait HasLlamaCppProperties {
     "Set the maximal number of chunks to process (default: -1, -1 = all)")
 
   /** @group param */
-  val nParallel =
-    new IntParam(this, "nParallel", "Set the number of parallel sequences to decode (default: 1)")
-
-  /** @group param */
   val nSequences =
     new IntParam(this, "nSequences", "Set the number of sequences to decode (default: 1)")
 
@@ -344,12 +340,6 @@ trait HasLlamaCppProperties {
     */
   def setNChunks(nChunks: Int): this.type = { set(this.nChunks, nChunks) }
 
-  /** Set the number of parallel sequences to decode (default: 1)
-    *
-    * @group setParam
-    */
-  def setNParallel(nParallel: Int): this.type = { set(this.nParallel, nParallel) }
-
   /** Set the number of sequences to decode (default: 1)
     *
     * @group setParam
@@ -623,9 +613,6 @@ trait HasLlamaCppProperties {
 
   /** @group getParam */
   def getNChunks: Int = $(nChunks)
-
-  /** @group getParam */
-  def getNParallel: Int = $(nParallel)
 
   /** @group getParam */
   def getNSequences: Int = $(nSequences)
@@ -1209,7 +1196,6 @@ trait HasLlamaCppProperties {
     if (isDefined(nUbatch)) modelParameters.setNUbatch($(nUbatch))
     if (isDefined(nDraft)) modelParameters.setNDraft($(nDraft))
     if (isDefined(nChunks)) modelParameters.setNChunks($(nChunks))
-    if (isDefined(nParallel)) modelParameters.setNParallel($(nParallel))
     if (isDefined(nSequences)) modelParameters.setNSequences($(nSequences))
     if (isDefined(pSplit)) modelParameters.setPSplit($(pSplit))
     if (isDefined(nGpuLayers)) modelParameters.setNGpuLayers($(nGpuLayers))

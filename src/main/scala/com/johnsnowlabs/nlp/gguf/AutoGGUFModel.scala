@@ -95,7 +95,8 @@ class AutoGGUFModel(override val uid: String)
     val annotations: Seq[Annotation] = batchedAnnotations.flatten
     if (annotations.nonEmpty) {
 
-      val modelParams = getModelParameters
+      val modelParams =
+        getModelParameters.setNParallel(getBatchSize) // set parallel decoding to batch size
       val inferenceParams = getInferenceParameters
 
       println("DEBUG DHA: modelParams: " + modelParams.toString)

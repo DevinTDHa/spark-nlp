@@ -226,6 +226,7 @@ trait HasLlamaCppProperties {
     this,
     "modelDraft",
     "Set the draft model for speculative decoding (default: unused)")
+
   //  modelAlias = new Param[String](this, "modelAlias", "Set a model alias")
   /** @group param */
   val lookupCacheStaticFilePath = new Param[String](
@@ -238,24 +239,20 @@ trait HasLlamaCppProperties {
     this,
     "lookupCacheDynamicFilePath",
     "Set path to dynamic lookup cache to use for lookup decoding (updated by generation)")
-  //    * Set LoRA adapters to use (implies --no-mmap).
+
   /** @group param */
-  //    val loraAdapters = new Map<String, Param(this, "Float", "The key is expected to be a file path, the values are expected to be scales.")
+  val loraAdapters = new StructFeature[Map[String, Float]](this, "loraAdapters")
+
   /** @group param */
   val loraBase = new Param[String](
     this,
     "loraBase",
-    "Set an optional model to use as a base for the layers modified by the LoRA adapter")
+    "Set an optional model to use as a base for the layers modified by the LoRA adapter"
+  ) // TODO: Should this be handled by spark files?
 
   /** @group param */
   val embedding =
     new BooleanParam(this, "embedding", "Whether to load model with embedding support")
-
-  /** @group param */
-  val continuousBatching = new BooleanParam(
-    this,
-    "continuousBatching",
-    "Whether to enable continuous batching (also called dynamic batching) (default: enabled)")
 
   /** @group param */
   val flashAttention = new BooleanParam(
@@ -528,7 +525,15 @@ trait HasLlamaCppProperties {
   def setLookupCacheDynamicFilePath(lookupCacheDynamicFilePath: String): this.type = {
     set(this.lookupCacheDynamicFilePath, lookupCacheDynamicFilePath)
   }
-  //  def setLoraAdapters(Float: Map<String,> loraAdapters): this.type = { set(this.Float, Float) }
+
+  /** Sets paths to lora adapters with user defined scale.
+    *
+    * @group setParam
+    */
+  def setLoraAdapters(loraAdapters: Map[String, Float]): this.type = {
+    set(this.loraAdapters, loraAdapters)
+  }
+
   /** Set an optional model to use as a base for the layers modified by the LoRA adapter
     *
     * @group setParam
@@ -540,14 +545,6 @@ trait HasLlamaCppProperties {
     * @group setParam
     */
   def setEmbedding(embedding: Boolean): this.type = { set(this.embedding, embedding) }
-
-  /** Whether to enable continuous batching (also called dynamic batching) (default: disabled)
-    *
-    * @group setParam
-    */
-  def setContinuousBatching(continuousBatching: Boolean): this.type = {
-    set(this.continuousBatching, continuousBatching)
-  }
 
   /** Whether to enable Flash Attention (default: disabled)
     *
@@ -696,15 +693,13 @@ trait HasLlamaCppProperties {
   def getLookupCacheDynamicFilePath: String = $(lookupCacheDynamicFilePath)
 
   /** @group getParam */
-  //  def getLoraAdapters : Map= ???
+  def getLoraAdapters: Map[String, Float] = $$(loraAdapters)
+
   /** @group getParam */
   def getLoraBase: String = $(loraBase)
 
   /** @group getParam */
   def getEmbedding: Boolean = $(embedding)
-
-  /** @group getParam */
-  def getContinuousBatching: Boolean = $(continuousBatching)
 
   /** @group getParam */
   def getFlashAttention: Boolean = $(flashAttention)
@@ -728,7 +723,6 @@ trait HasLlamaCppProperties {
   def getChatTemplate: String = $(chatTemplate)
 
   // ---------------- INFERENCE PARAMETERS ----------------
-//  val prompt = new Param[String]("prompt", "")
   /** @group param */
   val inputPrefix = new Param[String](
     this,
@@ -865,6 +859,7 @@ trait HasLlamaCppProperties {
     this,
     "ignoreEos",
     "Set whether to ignore end of stream token and continue generating (implies --logit-bias 2-inf)")
+
   // Modify the likelihood of tokens appearing in the completion by their id.
   val tokenIdBias: StructFeature[Map[Integer, Float]] =
     new StructFeature[Map[Integer, Float]](this, "tokenIdBias")
@@ -884,10 +879,12 @@ trait HasLlamaCppProperties {
     "stopStrings",
     "Set strings upon seeing which token generation is stopped")
 
-  // Set which samplers to use for token generation in the given order
-  // val samplers = Sampler... samplers // either TOP_K, TFS_Z, TYPICAL_P, TOP_P, MIN_P, TEMPERATURE
   /** @group param */
-//  val stream = new BooleanParam(this, "stream", "Whether to stream the output or not")
+  val samplers = new StringArrayParam(
+    this,
+    "samplers",
+    "Set which samplers to use for token generation in the given order")
+
   /** @group param */
   val useChatTemplate = new BooleanParam(
     this,
@@ -1099,7 +1096,21 @@ trait HasLlamaCppProperties {
   def setStopStrings(stopStrings: Array[String]): this.type = {
     set(this.stopStrings, stopStrings)
   }
-//  def setSamplers(samplers: Sampler... ): this.type =  {set(this.samplers, samplers)}
+
+  /** Set which samplers to use for token generation in the given order (Default: ["TOP_K",
+    * "TFS_Z", "TYPICAL_P", "TOP_P", "MIN_P", "TEMPERATURE"]).
+    *
+    * Available Samplers are:
+    *
+    *   - TOP_K: Top-k sampling
+    *   - TFS_Z: Tail free sampling
+    *   - TYPICAL_P: Locally typical sampling p
+    *   - TOP_P: Top-p sampling
+    *   - MIN_P: Min-p sampling
+    *   - TEMPERATURE: Temperature sampling
+    * @group setParam
+    */
+  def setSamplers(samplers: Array[String]): this.type = { set(this.samplers, samplers) }
 
   /** Whether or not to stream the output
     *
@@ -1204,17 +1215,14 @@ trait HasLlamaCppProperties {
   def getStopStrings: Array[String] = $(stopStrings)
 
   /** @group getParam */
-  //  def getSamplers : Sampler=  (samplers
+  def getSamplers: Array[String] = $(samplers)
+
   /** @group getParam */
   def getUseChatTemplate: Boolean = $(useChatTemplate)
 
-  setDefault(continuousBatching -> true)
-
   protected def getModelParameters: ModelParameters = {
-    val modelParameters = new ModelParameters()
+    val modelParameters = new ModelParameters().setContinuousBatching(true) // Always enabled
     if (isDefined(chatTemplate)) modelParameters.setChatTemplate($(chatTemplate))
-    if (isDefined(continuousBatching))
-      modelParameters.setContinuousBatching($(continuousBatching))
     if (isDefined(defragmentationThreshold))
       modelParameters.setDefragmentationThreshold($(defragmentationThreshold))
     if (isDefined(embedding)) modelParameters.setEmbedding($(embedding))
@@ -1228,6 +1236,14 @@ trait HasLlamaCppProperties {
       modelParameters.setLookupCacheDynamicFilePath($(lookupCacheDynamicFilePath))
     if (isDefined(lookupCacheStaticFilePath))
       modelParameters.setLookupCacheStaticFilePath($(lookupCacheStaticFilePath))
+    if (get(loraAdapters).isDefined) {
+      // Need to convert to mutable map first
+      val loraAdaptersMap: mutable.Map[String, java.lang.Float] =
+        mutable.Map($$(loraAdapters).map { case (key, value) =>
+          (key, float2Float(value))
+        }.toSeq: _*)
+      modelParameters.setLoraAdapters(loraAdaptersMap.asJava)
+    }
     if (isDefined(loraBase)) modelParameters.setLoraBase($(loraBase))
     if (isDefined(mainGpu)) modelParameters.setMainGpu($(mainGpu))
     if (isDefined(modelDraft)) modelParameters.setModelDraft($(modelDraft))
@@ -1278,6 +1294,7 @@ trait HasLlamaCppProperties {
     if (isDefined(grammar)) inferenceParams.setGrammar($(grammar))
     if (isDefined(ignoreEos)) inferenceParams.setIgnoreEos($(ignoreEos))
     if (isDefined(inputSuffix)) inferenceParams.setInputSuffix($(inputSuffix))
+    if (isDefined(inputPrefix)) inferenceParams.setInputPrefix($(inputPrefix))
     if (isDefined(minKeep)) inferenceParams.setMinKeep($(minKeep))
     if (isDefined(minP)) inferenceParams.setMinP($(minP))
     if (isDefined(miroStat)) inferenceParams.setMiroStat(MiroStat.valueOf($(miroStat)))
@@ -1315,6 +1332,7 @@ trait HasLlamaCppProperties {
     if (isDefined(topP)) inferenceParams.setTopP($(topP))
     if (isDefined(typicalP)) inferenceParams.setTypicalP($(typicalP))
     if (isDefined(useChatTemplate)) inferenceParams.setUseChatTemplate($(useChatTemplate))
+    if (isDefined(samplers)) inferenceParams.setSamplers($(samplers).map(Sampler.valueOf): _*)
 
     inferenceParams
   }

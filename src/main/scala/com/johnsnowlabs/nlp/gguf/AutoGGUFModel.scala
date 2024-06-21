@@ -26,7 +26,13 @@ import org.apache.spark.sql.SparkSession
 
 /** Annotator that uses the llama.cpp library to generate text completions.
   *
-  * It requires a GGUF model, which needs to be provided either by TODO or TODO.
+  * The annotator requires a GGUF model, which needs to be provided either by either providing a
+  * path to a local file or a URL (TODO).
+  *
+  * For settable parameters, and their explanations, see [[HasLlamaCppProperties]] and refer to
+  * the llama.cpp documentation of
+  * [[https://github.com/ggerganov/llama.cpp/tree/7d5e8777ae1d21af99d4f95be10db4870720da91/examples/server server.cpp]]
+  * for more information.
   *
   * ==Example==
   *
@@ -146,7 +152,6 @@ trait ReadAutoGGUFModelDLModel {
   val suffix: String = "TODO"
 
   def readModel(instance: AutoGGUFModel, path: String, spark: SparkSession): Unit = {
-    // TODO: path is the folder name, not the file name
     def findGGUFModelInFolder(): String = {
       val folder = new java.io.File(path)
       if (folder.exists && folder.isDirectory) {
@@ -170,7 +175,6 @@ trait ReadAutoGGUFModelDLModel {
   def loadSavedModel(modelPath: String, spark: SparkSession): AutoGGUFModel = {
     // TODO copyToLocal and potentially enable download from HF-URLS
     // val localPath: String = ResourceHelper.copyToLocal(path)
-    // TODO: extract parameters (which ones actually?)
     val annotatorModel = new AutoGGUFModel()
 
     annotatorModel.setModelIfNotSet(spark, GGUFWrapper.read(spark, modelPath))

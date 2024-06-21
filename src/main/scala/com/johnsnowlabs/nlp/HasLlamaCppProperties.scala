@@ -4,7 +4,18 @@ import de.kherud.llama.args.{GpuSplitMode, MiroStat, NumaStrategy, PoolingType, 
 import de.kherud.llama.{InferenceParameters, ModelParameters}
 import org.apache.spark.ml.param._
 
-/** Parameters to configure beam search text generation. */
+/** Contains settable parameters for the [[com.johnsnowlabs.nlp.gguf.AutoGGUFModel]].
+  *
+  * @groupname param Parameters
+  * @groupname setParam Parameter setters
+  * @groupname getParam Parameter getters
+  * @groupprio setParam  1
+  * @groupprio getParam  2
+  * @groupprio param  3
+  * @groupdesc param
+  *   A list of (hyper-)parameter keys this annotator can take. Users can set and get the
+  *   parameter values through setters and getters, respectively.
+  */
 trait HasLlamaCppProperties {
   this: ParamsAndFeaturesWritable =>
 
@@ -97,11 +108,9 @@ trait HasLlamaCppProperties {
     new Param[String](this, "gpuSplitMode", "Set how to split the model across GPUs")
 
   /** @group param */
-  val mainGpu = new IntParam(
-    this,
-    "mainGpu",
-    "Set the GPU that is used for scratch and small tensors"
-  ) // TODO: what does that even mean?
+  val mainGpu =
+    new IntParam(this, "mainGpu", "Set the main GPU that is used for scratch and small tensors.")
+
   /** @group param */
   val tensorSplit = new DoubleArrayParam(
     this,
@@ -171,10 +180,10 @@ trait HasLlamaCppProperties {
     * Available Strategies:
     *
     *   - DISABLED: No NUMA optimizations
-    *   - DISTRIBUTE: spread execution evenly over all
-    *   - ISOLATE: only spawn threads on CPUs on the node that execution started on
-    *   - NUMA_CTL: use the CPU map provided by numactl
-    *   - MIRROR: TODO
+    *   - DISTRIBUTE: Spread execution evenly over all
+    *   - ISOLATE: Only spawn threads on CPUs on the node that execution started on
+    *   - NUMA_CTL: Use the CPU map provided by numactl
+    *   - MIRROR: Mirrors the model across NUMA nodes
     *
     * @group param
     */
@@ -185,9 +194,9 @@ trait HasLlamaCppProperties {
 
   /** Set the RoPE frequency scaling method, defaults to linear unless specified by the model.
     *
-    *   - UNSPECIFIED: TODO
+    *   - UNSPECIFIED: Don't use any scaling
     *   - LINEAR: Linear scaling
-    *   - YARN: TODO
+    *   - YARN: YaRN RoPE scaling
     * @group param
     */
   val ropeScalingType = new Param[String](
@@ -197,7 +206,7 @@ trait HasLlamaCppProperties {
 
   /** Set the pooling type for embeddings, use model default if unspecified
     *
-    *   - 0 UNSPECIFIED: TODO
+    *   - 0 UNSPECIFIED: Don't use any pooling
     *   - 1 MEAN: Mean Pooling
     *   - 2 CLS: CLS Pooling
     *
@@ -214,17 +223,13 @@ trait HasLlamaCppProperties {
     "modelDraft",
     "Set the draft model for speculative decoding (default: unused)")
   //  modelAlias = new Param[String](this, "modelAlias", "Set a model alias")
-  /** @group param
-    * TODO: Needed?
-    */
+  /** @group param */
   val lookupCacheStaticFilePath = new Param[String](
     this,
     "lookupCacheStaticFilePath",
     "Set path to static lookup cache to use for lookup decoding (not updated by generation)")
 
-  /** @group param
-    * TODO: Needed?
-    */
+  /** @group param */
   val lookupCacheDynamicFilePath = new Param[String](
     this,
     "lookupCacheDynamicFilePath",
@@ -471,7 +476,7 @@ trait HasLlamaCppProperties {
     *   - DISTRIBUTE: spread execution evenly over all
     *   - ISOLATE: only spawn threads on CPUs on the node that execution started on
     *   - NUMA_CTL: use the CPU map provided by numactl
-    *   - MIRROR: TODO
+    *   - MIRROR: Mirrors the model across NUMA nodes
     *
     * @group setParam
     */
@@ -479,9 +484,9 @@ trait HasLlamaCppProperties {
 
   /** Set the RoPE frequency scaling method, defaults to linear unless specified by the model.
     *
-    *   - UNSPECIFIED: TODO
+    *   - UNSPECIFIED: Don't use any scaling
     *   - LINEAR: Linear scaling
-    *   - YARN: TODO
+    *   - YARN: YaRN RoPE scaling
     * @group setParam
     */
   def setRopeScalingType(ropeScalingType: String): this.type = {
@@ -490,7 +495,7 @@ trait HasLlamaCppProperties {
 
   /** Set the pooling type for embeddings, use model default if unspecified
     *
-    *   - UNSPECIFIED: TODO
+    *   - UNSPECIFIED: Don't use any pooling
     *   - MEAN: Mean Pooling
     *   - CLS: CLS Pooling
     *

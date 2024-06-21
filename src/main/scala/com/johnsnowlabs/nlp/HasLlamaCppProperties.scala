@@ -1,8 +1,12 @@
 package com.johnsnowlabs.nlp
 
-import de.kherud.llama.args.{GpuSplitMode, MiroStat, NumaStrategy, PoolingType, RopeScalingType}
+import com.johnsnowlabs.nlp.serialization.StructFeature
+import de.kherud.llama.args._
 import de.kherud.llama.{InferenceParameters, ModelParameters}
 import org.apache.spark.ml.param._
+
+import scala.collection.mutable
+import scala.jdk.CollectionConverters.mapAsJavaMapConverter
 
 /** Contains settable parameters for the [[com.johnsnowlabs.nlp.gguf.AutoGGUFModel]].
   *
@@ -862,12 +866,14 @@ trait HasLlamaCppProperties {
     "ignoreEos",
     "Set whether to ignore end of stream token and continue generating (implies --logit-bias 2-inf)")
   // Modify the likelihood of tokens appearing in the completion by their id.
-// TODO:  val tokenIdBias: Map[Integer, Float]
+  val tokenIdBias: StructFeature[Map[Integer, Float]] =
+    new StructFeature[Map[Integer, Float]](this, "tokenIdBias")
 
   // Modify the likelihood of tokens appearing in the completion by their string.
-// TODO:  val tokenBias: Map[String, Float]
-  // 	 * Set tokens to disable, this corresponds to {@link #setTokenIdBias(Map)} with a value of
-  //	 * {@link Float#NEGATIVE_INFINITY}.
+  /** @group param */
+  val tokenBias: StructFeature[Map[String, Float]] =
+    new StructFeature[Map[String, Float]](this, "tokenBias")
+
   /** @group param */
   val disableTokenIds =
     new IntArrayParam(this, "disableTokenIds", "Set the token ids to disable in the completion")
@@ -1054,18 +1060,31 @@ trait HasLlamaCppProperties {
     set(this.penaltyPrompt, penaltyPrompt)
   }
 
-// TODO?  def setPenaltyPrompt(tokens: Array[Int] ): this.type =  {set(this.penaltyPrompt, tokens)}
-
   /** Set whether to ignore end of stream token and continue generating (implies --logit-bias
     * 2-inf)
     *
     * @group setParam
     */
   def setIgnoreEos(ignoreEos: Boolean): this.type = { set(this.ignoreEos, ignoreEos) }
-// TODO: def setTokenIdBias(Float: Map<Integer, > logitBias): this.type =  {set(this.Float, Float)}
-// TODO: def setTokenBias(Float: Map<String, > logitBias): this.type =  {set(this.Float, Float)}
 
-  /** Set the token ids to disable in the completion
+  /** Set the tokens to disable during completion.
+    *
+    * @group setParam
+    */
+  def setTokenBias(tokenBias: Map[String, Float]): this.type = {
+    set(this.tokenBias, tokenBias)
+  }
+
+  /** Set the token ids to disable in the completion.
+    *
+    * @group setParam
+    */
+  def setTokenIdBias(tokenIdBias: Map[Integer, Float]): this.type = {
+    set(this.tokenIdBias, tokenIdBias)
+  }
+
+  /** Set the token ids to disable in the completion. This corresponds to `setTokenBias` with a
+    * value of `Float.NEGATIVE_INFINITY`.
     *
     * @group setParam
     */
@@ -1173,9 +1192,11 @@ trait HasLlamaCppProperties {
   def getIgnoreEos: Boolean = $(ignoreEos)
 
   /** @group getParam */
-  //  def getTokenIdBias = ???
+  def getTokenIdBias: Map[Integer, Float] = $$(tokenIdBias)
+
   /** @group getParam */
-  //  def getTokenBias =  ???
+  def getTokenBias: Map[String, Float] = $$(tokenBias)
+
   /** @group getParam */
   def getDisableTokenIds: Array[Int] = $(disableTokenIds)
 
@@ -1191,92 +1212,108 @@ trait HasLlamaCppProperties {
 
   protected def getModelParameters: ModelParameters = {
     val modelParameters = new ModelParameters()
+    if (isDefined(chatTemplate)) modelParameters.setChatTemplate($(chatTemplate))
+    if (isDefined(continuousBatching))
+      modelParameters.setContinuousBatching($(continuousBatching))
+    if (isDefined(defragmentationThreshold))
+      modelParameters.setDefragmentationThreshold($(defragmentationThreshold))
+    if (isDefined(embedding)) modelParameters.setEmbedding($(embedding))
+    if (isDefined(flashAttention)) modelParameters.setFlashAttention($(flashAttention))
+    if (isDefined(gpuSplitMode))
+      modelParameters.setSplitMode(GpuSplitMode.valueOf($(gpuSplitMode)))
+    if (isDefined(grpAttnN)) modelParameters.setGrpAttnN($(grpAttnN))
+    if (isDefined(grpAttnW)) modelParameters.setGrpAttnW($(grpAttnW))
+    if (isDefined(inputPrefixBos)) modelParameters.setInputPrefixBos($(inputPrefixBos))
+    if (isDefined(lookupCacheDynamicFilePath))
+      modelParameters.setLookupCacheDynamicFilePath($(lookupCacheDynamicFilePath))
+    if (isDefined(lookupCacheStaticFilePath))
+      modelParameters.setLookupCacheStaticFilePath($(lookupCacheStaticFilePath))
+    if (isDefined(loraBase)) modelParameters.setLoraBase($(loraBase))
+    if (isDefined(mainGpu)) modelParameters.setMainGpu($(mainGpu))
+    if (isDefined(modelDraft)) modelParameters.setModelDraft($(modelDraft))
+    if (isDefined(nBatch)) modelParameters.setNBatch($(nBatch))
+    if (isDefined(nBeams)) modelParameters.setNBeams($(nBeams))
+    if (isDefined(nChunks)) modelParameters.setNChunks($(nChunks))
+    if (isDefined(nCtx)) modelParameters.setNCtx($(nCtx))
+    if (isDefined(nDraft)) modelParameters.setNDraft($(nDraft))
+    if (isDefined(nGpuLayers)) modelParameters.setNGpuLayers($(nGpuLayers))
+    if (isDefined(nGpuLayersDraft)) modelParameters.setNGpuLayersDraft($(nGpuLayersDraft))
+    if (isDefined(nSequences)) modelParameters.setNSequences($(nSequences))
     if (isDefined(nThreads)) modelParameters.setNThreads($(nThreads))
-    if (isDefined(nThreadsDraft)) modelParameters.setNThreadsDraft($(nThreadsDraft))
     if (isDefined(nThreadsBatch)) modelParameters.setNThreadsBatch($(nThreadsBatch))
     if (isDefined(nThreadsBatchDraft))
       modelParameters.setNThreadsBatchDraft($(nThreadsBatchDraft))
-    if (isDefined(nCtx)) modelParameters.setNCtx($(nCtx))
-    if (isDefined(nBatch)) modelParameters.setNBatch($(nBatch))
+    if (isDefined(nThreadsDraft)) modelParameters.setNThreadsDraft($(nThreadsDraft))
     if (isDefined(nUbatch)) modelParameters.setNUbatch($(nUbatch))
-    if (isDefined(nDraft)) modelParameters.setNDraft($(nDraft))
-    if (isDefined(nChunks)) modelParameters.setNChunks($(nChunks))
-    if (isDefined(nSequences)) modelParameters.setNSequences($(nSequences))
+    if (isDefined(noKvOffload)) modelParameters.setNoKvOffload($(noKvOffload))
+    if (isDefined(numaStrategy)) modelParameters.setNuma(NumaStrategy.valueOf($(numaStrategy)))
     if (isDefined(pSplit)) modelParameters.setPSplit($(pSplit))
-    if (isDefined(nGpuLayers)) modelParameters.setNGpuLayers($(nGpuLayers))
-    if (isDefined(nGpuLayersDraft)) modelParameters.setNGpuLayersDraft($(nGpuLayersDraft))
-    if (isDefined(gpuSplitMode))
-      modelParameters.setSplitMode(GpuSplitMode.valueOf($(gpuSplitMode)))
-    if (isDefined(mainGpu)) modelParameters.setMainGpu($(mainGpu))
-    if (isDefined(tensorSplit)) modelParameters.setTensorSplit($(tensorSplit).map(_.toFloat))
-    if (isDefined(nBeams)) modelParameters.setNBeams($(nBeams))
-    if (isDefined(grpAttnN)) modelParameters.setGrpAttnN($(grpAttnN))
-    if (isDefined(grpAttnW)) modelParameters.setGrpAttnW($(grpAttnW))
+    if (isDefined(poolingType))
+      modelParameters.setPoolingType(PoolingType.valueOf($(poolingType)))
     if (isDefined(ropeFreqBase)) modelParameters.setRopeFreqBase($(ropeFreqBase))
     if (isDefined(ropeFreqScale)) modelParameters.setRopeFreqScale($(ropeFreqScale))
-    if (isDefined(yarnExtFactor)) modelParameters.setYarnExtFactor($(yarnExtFactor))
+    if (isDefined(ropeScalingType))
+      modelParameters.setRopeScalingType(RopeScalingType.valueOf($(ropeScalingType)))
+    if (isDefined(systemPrompt)) modelParameters.setSystemPrompt($(systemPrompt))
+    if (isDefined(tensorSplit)) modelParameters.setTensorSplit($(tensorSplit).map(_.toFloat))
+    if (isDefined(useMlock)) modelParameters.setUseMlock($(useMlock))
+    if (isDefined(useMmap)) modelParameters.setUseMmap($(useMmap))
     if (isDefined(yarnAttnFactor)) modelParameters.setYarnAttnFactor($(yarnAttnFactor))
     if (isDefined(yarnBetaFast)) modelParameters.setYarnBetaFast($(yarnBetaFast))
     if (isDefined(yarnBetaSlow)) modelParameters.setYarnBetaSlow($(yarnBetaSlow))
+    if (isDefined(yarnExtFactor)) modelParameters.setYarnExtFactor($(yarnExtFactor))
     if (isDefined(yarnOrigCtx)) modelParameters.setYarnOrigCtx($(yarnOrigCtx))
-    if (isDefined(defragmentationThreshold))
-      modelParameters.setDefragmentationThreshold($(defragmentationThreshold))
-    if (isDefined(numaStrategy)) modelParameters.setNuma(NumaStrategy.valueOf($(numaStrategy)))
-    if (isDefined(ropeScalingType))
-      modelParameters.setRopeScalingType(RopeScalingType.valueOf($(ropeScalingType)))
-    if (isDefined(poolingType))
-      modelParameters.setPoolingType(PoolingType.valueOf($(poolingType)))
-    if (isDefined(modelDraft)) modelParameters.setModelDraft($(modelDraft))
-    if (isDefined(lookupCacheStaticFilePath))
-      modelParameters.setLookupCacheStaticFilePath($(lookupCacheStaticFilePath))
-    if (isDefined(lookupCacheDynamicFilePath))
-      modelParameters.setLookupCacheDynamicFilePath($(lookupCacheDynamicFilePath))
-    if (isDefined(loraBase)) modelParameters.setLoraBase($(loraBase))
-    if (isDefined(embedding)) modelParameters.setEmbedding($(embedding))
-    if (isDefined(continuousBatching))
-      modelParameters.setContinuousBatching($(continuousBatching))
-    if (isDefined(flashAttention)) modelParameters.setFlashAttention($(flashAttention))
-    if (isDefined(inputPrefixBos)) modelParameters.setInputPrefixBos($(inputPrefixBos))
-    if (isDefined(useMmap)) modelParameters.setUseMmap($(useMmap))
-    if (isDefined(useMlock)) modelParameters.setUseMlock($(useMlock))
-    if (isDefined(noKvOffload)) modelParameters.setNoKvOffload($(noKvOffload))
-    if (isDefined(systemPrompt)) modelParameters.setSystemPrompt($(systemPrompt))
-    if (isDefined(chatTemplate)) modelParameters.setChatTemplate($(chatTemplate))
 
     modelParameters
   }
 
   protected def getInferenceParameters: InferenceParameters = {
     val inferenceParams = new InferenceParameters("")
-    if (isDefined(inputSuffix)) inferenceParams.setInputSuffix($(inputSuffix))
     if (isDefined(cachePrompt)) inferenceParams.setCachePrompt($(cachePrompt))
-    if (isDefined(nPredict)) inferenceParams.setNPredict($(nPredict))
-    if (isDefined(topK)) inferenceParams.setTopK($(topK))
-    if (isDefined(topP)) inferenceParams.setTopP($(topP))
-    if (isDefined(minP)) inferenceParams.setMinP($(minP))
-    if (isDefined(tfsZ)) inferenceParams.setTfsZ($(tfsZ))
-    if (isDefined(typicalP)) inferenceParams.setTypicalP($(typicalP))
-    if (isDefined(temperature)) inferenceParams.setTemperature($(temperature))
-    if (isDefined(dynamicTemperatureRange))
-      inferenceParams.setDynamicTemperatureRange($(dynamicTemperatureRange))
     if (isDefined(dynamicTemperatureExponent))
       inferenceParams.setDynamicTemperatureExponent($(dynamicTemperatureExponent))
+    if (isDefined(dynamicTemperatureRange))
+      inferenceParams.setDynamicTemperatureRange($(dynamicTemperatureRange))
+    if (isDefined(frequencyPenalty)) inferenceParams.setFrequencyPenalty($(frequencyPenalty))
+    if (isDefined(grammar)) inferenceParams.setGrammar($(grammar))
+    if (isDefined(ignoreEos)) inferenceParams.setIgnoreEos($(ignoreEos))
+    if (isDefined(inputSuffix)) inferenceParams.setInputSuffix($(inputSuffix))
+    if (isDefined(minKeep)) inferenceParams.setMinKeep($(minKeep))
+    if (isDefined(minP)) inferenceParams.setMinP($(minP))
+    if (isDefined(miroStat)) inferenceParams.setMiroStat(MiroStat.valueOf($(miroStat)))
+    if (isDefined(miroStatEta)) inferenceParams.setMiroStatEta($(miroStatEta))
+    if (isDefined(miroStatTau)) inferenceParams.setMiroStatTau($(miroStatTau))
+    if (isDefined(nKeep)) inferenceParams.setNKeep($(nKeep))
+    if (isDefined(nPredict)) inferenceParams.setNPredict($(nPredict))
+    if (isDefined(nProbs)) inferenceParams.setNProbs($(nProbs))
+    if (isDefined(penalizeNl)) inferenceParams.setPenalizeNl($(penalizeNl))
+    if (isDefined(penaltyPrompt)) inferenceParams.setPenaltyPrompt($(penaltyPrompt))
+    if (isDefined(presencePenalty)) inferenceParams.setPresencePenalty($(presencePenalty))
     if (isDefined(repeatLastN)) inferenceParams.setRepeatLastN($(repeatLastN))
     if (isDefined(repeatPenalty)) inferenceParams.setRepeatPenalty($(repeatPenalty))
-    if (isDefined(frequencyPenalty)) inferenceParams.setFrequencyPenalty($(frequencyPenalty))
-    if (isDefined(presencePenalty)) inferenceParams.setPresencePenalty($(presencePenalty))
-    if (isDefined(miroStat)) inferenceParams.setMiroStat(MiroStat.valueOf($(miroStat)))
-    if (isDefined(miroStatTau)) inferenceParams.setMiroStatTau($(miroStatTau))
-    if (isDefined(miroStatEta)) inferenceParams.setMiroStatEta($(miroStatEta))
-    if (isDefined(penalizeNl)) inferenceParams.setPenalizeNl($(penalizeNl))
-    if (isDefined(nKeep)) inferenceParams.setNKeep($(nKeep))
     if (isDefined(seed)) inferenceParams.setSeed($(seed))
-    if (isDefined(nProbs)) inferenceParams.setNProbs($(nProbs))
-    if (isDefined(minKeep)) inferenceParams.setMinKeep($(minKeep))
-    if (isDefined(grammar)) inferenceParams.setGrammar($(grammar))
-    if (isDefined(penaltyPrompt)) inferenceParams.setPenaltyPrompt($(penaltyPrompt))
-    if (isDefined(ignoreEos)) inferenceParams.setIgnoreEos($(ignoreEos))
     if (isDefined(stopStrings)) inferenceParams.setStopStrings($(stopStrings): _*)
+    if (isDefined(temperature)) inferenceParams.setTemperature($(temperature))
+    if (isDefined(tfsZ)) inferenceParams.setTfsZ($(tfsZ))
+    if (isDefined(topK)) inferenceParams.setTopK($(topK))
+    if (get(tokenIdBias).isDefined) {
+      // Need to convert to mutable map first
+      val tokenIdBiasMap: mutable.Map[Integer, java.lang.Float] =
+        mutable.Map($$(tokenIdBias).map { case (key, value) =>
+          (key, float2Float(value))
+        }.toSeq: _*)
+      inferenceParams.setTokenIdBias(tokenIdBiasMap.asJava)
+    }
+    if (get(tokenBias).isDefined) {
+      // Need to convert to mutable map first
+      val tokenBiasMap: mutable.Map[String, java.lang.Float] = mutable.Map($$(tokenBias).map {
+        case (key, value) =>
+          (key, float2Float(value))
+      }.toSeq: _*)
+      inferenceParams.setTokenBias(tokenBiasMap.asJava)
+    }
+    if (isDefined(topP)) inferenceParams.setTopP($(topP))
+    if (isDefined(typicalP)) inferenceParams.setTypicalP($(typicalP))
     if (isDefined(useChatTemplate)) inferenceParams.setUseChatTemplate($(useChatTemplate))
 
     inferenceParams

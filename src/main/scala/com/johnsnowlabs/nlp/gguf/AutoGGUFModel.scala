@@ -18,8 +18,8 @@ package com.johnsnowlabs.nlp.gguf
 
 import com.johnsnowlabs.ml.gguf.GGUFWrapper
 import com.johnsnowlabs.nlp._
-import de.kherud.llama.args._
-import de.kherud.llama.{InferenceParameters, LlamaModel, ModelParameters}
+import com.johnsnowlabs.nlp.util.io.ResourceHelper
+import de.kherud.llama.LlamaModel
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.SparkSession
@@ -106,6 +106,7 @@ class AutoGGUFModel(override val uid: String)
       val inferenceParams = getInferenceParameters
 
       println("DEBUG DHA: modelParams: " + modelParams.toString)
+      println("DEBUG DHA: inferenceParams " + inferenceParams.toString)
 
       val model: LlamaModel = getModelIfNotSet.getSession(modelParams)
 
@@ -174,10 +175,11 @@ trait ReadAutoGGUFModelDLModel {
 
   def loadSavedModel(modelPath: String, spark: SparkSession): AutoGGUFModel = {
     // TODO copyToLocal and potentially enable download from HF-URLS
-    // val localPath: String = ResourceHelper.copyToLocal(path)
+    val localPath: String = ResourceHelper.copyToLocal(modelPath)
     val annotatorModel = new AutoGGUFModel()
-
-    annotatorModel.setModelIfNotSet(spark, GGUFWrapper.read(spark, modelPath))
+    annotatorModel
+      .setModelIfNotSet(spark, GGUFWrapper.read(spark, localPath))
+      .setMetadata(LlamaModel.getMetadataFromFile(localPath))
     annotatorModel
   }
 }

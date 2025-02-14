@@ -10,10 +10,10 @@ version := "5.5.3"
 
 (ThisBuild / scalaVersion) := scalaVer
 
-(ThisBuild / scalacOptions) += "-target:jvm-1.8"
+//(ThisBuild / scalacOptions) += "-target:11"
+(ThisBuild / javacOptions) ++= Seq("-source", "11", "-target", "11")
 
 (ThisBuild / javaOptions) += "-Xmx4096m"
-
 (ThisBuild / javaOptions) += "-XX:+UseG1GC"
 
 scalacOptions ++= Seq("-unchecked", "-feature", "-deprecation", "-language:implicitConversions")
@@ -150,7 +150,13 @@ lazy val utilDependencies = Seq(
     exclude ("com.google.guava", "guava")
     exclude ("org.apache.commons", "commons-lang3")
     exclude ("com.google.code.findbugs", "annotations")
-    exclude ("org.slf4j", "slf4j-api"),
+    exclude ("org.slf4j", "slf4j-api")
+    exclude ("org.projectlombok", "lombok") // Java 11 Compatibility
+    exclude ("com.google.protobuf", "protobuf-java") // TODO: Do any annotators depend on this?
+    exclude ("com.google.protobuf", "protobuf-java-util"),
+  gcpStorage
+    exclude ("com.google.protobuf", "protobuf-java")
+    exclude ("com.google.protobuf", "protobuf-java-util"),
   gcpStorage
     exclude ("com.fasterxml.jackson.core", "jackson-core")
     exclude ("com.fasterxml.jackson.dataformat", "jackson-dataformat-cbor"),
@@ -163,8 +169,7 @@ lazy val utilDependencies = Seq(
   poiDocx
     exclude ("org.apache.logging.log4j", "log4j-api"),
   scratchpad
-    exclude ("org.apache.logging.log4j", "log4j-api")
-)
+    exclude ("org.apache.logging.log4j", "log4j-api"))
 
 lazy val typedDependencyParserDependencies = Seq(junit)
 
@@ -188,26 +193,26 @@ val onnxDependencies: Seq[sbt.ModuleID] =
   else
     Seq(onnxCPU)
 
-val llamaCppDependencies =
-  if (is_gpu.equals("true"))
-    Seq(llamaCppGPU)
-  else if (is_silicon.equals("true"))
-    Seq(llamaCppSilicon)
-  else if (is_aarch64.equals("true"))
-    Seq(llamaCppAarch64)
-  else
-    Seq(llamaCppCPU)
-
-val openVinoDependencies: Seq[sbt.ModuleID] =
-  if (is_gpu.equals("true"))
-    Seq(openVinoGPU)
-  else
+val llamaCppDependencies = Seq.empty
+//  if (is_gpu.equals("true"))
+//    Seq(llamaCppGPU)
 //  else if (is_silicon.equals("true"))
-//    Seq(openVinoCPU)
+//    Seq(llamaCppSilicon)
 //  else if (is_aarch64.equals("true"))
-//    Seq(openVinoCPU)
+//    Seq(llamaCppAarch64)
 //  else
-    Seq(openVinoCPU)
+//    Seq(llamaCppCPU)
+
+val openVinoDependencies: Seq[sbt.ModuleID] = Seq.empty
+//  if (is_gpu.equals("true"))
+//    Seq(openVinoGPU)
+//  else
+////  else if (is_silicon.equals("true"))
+////    Seq(openVinoCPU)
+////  else if (is_aarch64.equals("true"))
+////    Seq(openVinoCPU)
+////  else
+//    Seq(openVinoCPU)
 
 lazy val mavenProps = settingKey[Unit]("workaround for Maven properties")
 
@@ -237,7 +242,8 @@ lazy val root = (project in file("."))
 
 (assembly / assemblyMergeStrategy) := {
   case PathList("META-INF", "versions", "9", "module-info.class") => MergeStrategy.discard
-  case PathList("module-info.class") => MergeStrategy.discard // Discard any module-info.class globally
+  case PathList("module-info.class") =>
+    MergeStrategy.discard // Discard any module-info.class globally
   case PathList("apache.commons.lang3", _ @_*) => MergeStrategy.discard
   case PathList("org.apache.hadoop", _ @_*) => MergeStrategy.first
   case PathList("com.amazonaws", _ @_*) => MergeStrategy.last

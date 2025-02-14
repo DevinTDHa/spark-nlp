@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.io.IOUtils
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File, FileOutputStream, InputStream}
-import scala.jdk.CollectionConverters.asScalaIteratorConverter
+import scala.jdk.CollectionConverters._
 
 class AzureGateway(storageAccountName: String, accountKey: String) extends CloudStorage {
 

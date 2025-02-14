@@ -110,7 +110,7 @@ class WordReader extends Serializable {
       case _ => None
     }
 
-    elements
+    elements.toSeq
   }
 
   private def processParagraph(
@@ -148,7 +148,7 @@ class WordReader extends Serializable {
           processParagraph(paragraph, document, "table")
         }
       }
-    }
+    }.toSeq
   }
 
   private def parseDocToElements(document: HWPFDocument): Seq[HTMLElement] = {

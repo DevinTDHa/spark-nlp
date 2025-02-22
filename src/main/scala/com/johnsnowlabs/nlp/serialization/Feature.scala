@@ -22,9 +22,13 @@ import com.johnsnowlabs.nlp.annotators.spell.context.parser.VocabParser
 import com.johnsnowlabs.nlp.util.io.ResourceHelper
 import com.johnsnowlabs.util.{ConfigHelper, ConfigLoader}
 import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.io.{BytesWritable, NullWritable}
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
+import org.apache.spark.util.Utils
 
+import java.io.{ByteArrayInputStream, InputStream, ObjectInputStream, ObjectStreamClass}
 import scala.reflect.ClassTag
 
 abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
@@ -46,6 +50,7 @@ abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
   final protected var fallbackLazyValue: Option[() => TComplete] = None
   final protected var isProtected: Boolean = false
 
+  // TODO: This should be kryo?
   final def serialize(
       spark: SparkSession,
       path: String,
@@ -221,7 +226,59 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
       field: String,
       value: Map[TKey, TValue]): Unit = {
     val dataPath = getFieldPath(path, field)
+    // TODO: Change this to kryo or some better serializer
     spark.sparkContext.parallelize(value.toSeq).saveAsObjectFile(dataPath.toString)
+  }
+
+  /** Loads a scala tuple of TKey and TValue from a SequenceFile containing serialized objects. It
+    * tries to load the tuple across Scala version.
+    *
+    * Copied:
+    *
+    * Load an RDD saved as a SequenceFile containing serialized objects, with NullWritable keys
+    * and BytesWritable values that contain a serialized partition. This is still an experimental
+    * storage format and may not be supported exactly as is in future Spark releases. It will also
+    * be pretty slow if you use the default serializer (Java serialization), though the nice thing
+    * about it is that there's very little effort required to save arbitrary objects.
+    *
+    * @param path
+    *   directory to the input data files, the path can be comma separated paths as a list of
+    *   inputs
+    * @return
+    *   RDD representing deserialized data from the file(s)
+    */
+  private def deserializeOldTupleObjects[K, V](spark: SparkSession, path: String): RDD[(K, V)] = {
+
+    /** Classes that require special handling during the serialization and deserialization process
+      * must implement special methods with these exact signatures:
+      *   - private void writeObject(java.io.ObjectOutputStream out) throws IOException
+      *   - private void readObject(java.io.ObjectInputStream in) throws IOException,
+      *     ClassNotFoundException;
+      *   - private void readObjectNoData() throws ObjectStreamException;
+      */
+//    class OldScalaTuple(var _1: K, var _2: V) extends Serializable {
+    class OldScalaTuple() extends Serializable {
+    println("Construtor")
+      private def readObject(in: ObjectInputStream): Unit = {
+        ???
+      }
+    }
+
+    /** Deserialize this class using a custom object input stream */
+    def deserialize[T](bytes: Array[Byte]): T = {
+      val bis = new ByteArrayInputStream(bytes)
+      val ois = new LegacyObjectInputStream(bis, classOf[Array[OldScalaTuple]])
+
+      ois.readObject.asInstanceOf[T]
+    }
+
+    spark.sparkContext
+      .sequenceFile(
+        path,
+        classOf[NullWritable],
+        classOf[BytesWritable],
+        spark.sparkContext.defaultMinPartitions)
+      .flatMap((x: (NullWritable, BytesWritable)) => deserialize[Array[(K, V)]](x._2.getBytes))
   }
 
   override def deserializeObject(
@@ -231,8 +288,10 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
     val uri = new java.net.URI(path.replaceAllLiterally("\\", "/"))
     val fs: FileSystem = FileSystem.get(uri, spark.sparkContext.hadoopConfiguration)
     val dataPath = getFieldPath(path, field)
+    // TODO: We can provide a custom deserializer here, replace (TKey, TValue) with it
     if (fs.exists(dataPath)) {
-      Some(spark.sparkContext.objectFile[(TKey, TValue)](dataPath.toString).collect.toMap)
+//      Some(spark.sparkContext.objectFile[(TKey, TValue)](dataPath.toString).collect.toMap)
+      Some(deserializeOldTupleObjects[TKey, TValue](spark, dataPath.toString).collect.toMap)
     } else {
       None
     }

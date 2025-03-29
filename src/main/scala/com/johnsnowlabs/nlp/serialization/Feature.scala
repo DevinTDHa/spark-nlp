@@ -26,7 +26,6 @@ import org.apache.hadoop.io.{BytesWritable, NullWritable}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
-import org.apache.spark.util.Utils
 
 import java.io.{ByteArrayInputStream, InputStream, ObjectInputStream, ObjectStreamClass}
 import scala.reflect.ClassTag
@@ -257,17 +256,15 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
       *   - private void readObjectNoData() throws ObjectStreamException;
       */
 //    class OldScalaTuple(var _1: K, var _2: V) extends Serializable {
-    class OldScalaTuple() extends Serializable {
-    println("Construtor")
-      private def readObject(in: ObjectInputStream): Unit = {
-        ???
-      }
-    }
+//    class OldScalaTuple() extends Serializable {
+//      println("Construtor")
+//    }
 
     /** Deserialize this class using a custom object input stream */
     def deserialize[T](bytes: Array[Byte]): T = {
       val bis = new ByteArrayInputStream(bytes)
-      val ois = new LegacyObjectInputStream(bis, classOf[Array[OldScalaTuple]])
+      val ois = new LegacyObjectInputStream(bis, classOf[(K, V)])
+//      val ois = new LegacyObjectInputStream(bis, classOf[Array[(String, Int)]])
 
       ois.readObject.asInstanceOf[T]
     }

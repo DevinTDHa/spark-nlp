@@ -26,8 +26,8 @@ import org.apache.hadoop.io.{BytesWritable, NullWritable}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
+import org.slf4j.{Logger, LoggerFactory}
 
-import java.io.{ByteArrayInputStream, InputStream, ObjectInputStream, ObjectStreamClass}
 import scala.reflect.ClassTag
 
 abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
@@ -37,6 +37,7 @@ abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
   model.features.append(this)
 
   private val spark: SparkSession = ResourceHelper.spark
+  protected lazy val logger: Logger = LoggerFactory.getLogger(s"${this.getClass.getName}-$name")
 
   val serializationMode: String =
     ConfigLoader.getConfigStringValue(ConfigHelper.serializationMode)
@@ -124,10 +125,10 @@ abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
   final def setValue(value: Option[Any]): HasFeatures = {
     if (isProtected && isSet) {
       val warnString =
-        s"Warning: The parameter ${this.name} is protected and can only be set once." +
+        s"The parameter ${this.name} is protected and can only be set once." +
           " For a pretrained model, this was done during the initialization process." +
           " If you are trying to train your own model, please check the documentation."
-      println(warnString)
+      logger.warn(warnString)
     } else {
       if (useBroadcast) {
         if (isSet) broadcastValue.get.destroy()
@@ -232,13 +233,10 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
   /** Loads a scala tuple of TKey and TValue from a SequenceFile containing serialized objects. It
     * tries to load the tuple across Scala version.
     *
-    * Copied:
+    * Adapted from sparkContext.objectFile:
     *
     * Load an RDD saved as a SequenceFile containing serialized objects, with NullWritable keys
-    * and BytesWritable values that contain a serialized partition. This is still an experimental
-    * storage format and may not be supported exactly as is in future Spark releases. It will also
-    * be pretty slow if you use the default serializer (Java serialization), though the nice thing
-    * about it is that there's very little effort required to save arbitrary objects.
+    * and BytesWritable values that contain a serialized partition.
     *
     * @param path
     *   directory to the input data files, the path can be comma separated paths as a list of
@@ -247,35 +245,14 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
     *   RDD representing deserialized data from the file(s)
     */
   private def deserializeOldTupleObjects[K, V](spark: SparkSession, path: String): RDD[(K, V)] = {
-
-    /** Classes that require special handling during the serialization and deserialization process
-      * must implement special methods with these exact signatures:
-      *   - private void writeObject(java.io.ObjectOutputStream out) throws IOException
-      *   - private void readObject(java.io.ObjectInputStream in) throws IOException,
-      *     ClassNotFoundException;
-      *   - private void readObjectNoData() throws ObjectStreamException;
-      */
-//    class OldScalaTuple(var _1: K, var _2: V) extends Serializable {
-//    class OldScalaTuple() extends Serializable {
-//      println("Construtor")
-//    }
-
-    /** Deserialize this class using a custom object input stream */
-    def deserialize[T](bytes: Array[Byte]): T = {
-      val bis = new ByteArrayInputStream(bytes)
-      val ois = new LegacyObjectInputStream(bis, classOf[(K, V)])
-//      val ois = new LegacyObjectInputStream(bis, classOf[Array[(String, Int)]])
-
-      ois.readObject.asInstanceOf[T]
-    }
-
     spark.sparkContext
       .sequenceFile(
         path,
         classOf[NullWritable],
         classOf[BytesWritable],
         spark.sparkContext.defaultMinPartitions)
-      .flatMap((x: (NullWritable, BytesWritable)) => deserialize[Array[(K, V)]](x._2.getBytes))
+      .flatMap((x: (NullWritable, BytesWritable)) =>
+        LegacyObjectInputStream.deserializeArray[(K, V)](x._2.getBytes, "scala.Tuple2"))
   }
 
   override def deserializeObject(
@@ -285,10 +262,18 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
     val uri = new java.net.URI(path.replaceAllLiterally("\\", "/"))
     val fs: FileSystem = FileSystem.get(uri, spark.sparkContext.hadoopConfiguration)
     val dataPath = getFieldPath(path, field)
-    // TODO: We can provide a custom deserializer here, replace (TKey, TValue) with it
     if (fs.exists(dataPath)) {
-//      Some(spark.sparkContext.objectFile[(TKey, TValue)](dataPath.toString).collect.toMap)
-      Some(deserializeOldTupleObjects[TKey, TValue](spark, dataPath.toString).collect.toMap)
+      try {
+        Some(spark.sparkContext.objectFile[(TKey, TValue)](dataPath.toString).collect.toMap)
+      } catch {
+        case e: org.apache.spark.SparkException
+            if e.getCause.isInstanceOf[java.io.InvalidClassException] =>
+          logger.info(
+            "Detected InvalidClassException during deserialization, attempting to load as legacy object.")
+          Some(deserializeOldTupleObjects[TKey, TValue](spark, dataPath.toString).collect.toMap)
+        case e: Exception =>
+          throw e
+      }
     } else {
       None
     }

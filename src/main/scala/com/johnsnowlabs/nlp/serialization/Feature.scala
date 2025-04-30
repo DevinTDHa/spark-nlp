@@ -160,6 +160,32 @@ abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
     this
   }
 
+  /** Loads an object from a SequenceFile containing serialized objects. It tries to load the
+    * tuple across Scala version, handling serialVersionUID mismatches.
+    *
+    * Adapted from sparkContext.objectFile:
+    *
+    * "Load an RDD saved as a SequenceFile containing serialized objects, with NullWritable keys
+    * and BytesWritable values that contain a serialized partition."
+    *
+    * @param path
+    *   directory to the input data files, the path can be comma separated paths as a list of
+    *   inputs
+    * @return
+    *   RDD representing deserialized data from the file(s)
+    */
+  protected def deserializeLegacyObject[ObjectType: ClassTag](
+      spark: SparkSession,
+      path: String): RDD[ObjectType] = {
+    spark.sparkContext
+      .sequenceFile(
+        path,
+        classOf[NullWritable],
+        classOf[BytesWritable],
+        spark.sparkContext.defaultMinPartitions)
+      .flatMap((x: (NullWritable, BytesWritable)) =>
+        LegacyObjectInputStream.deserializeArray[ObjectType](x._2.getBytes))
+  }
 }
 
 class StructFeature[TValue: ClassTag](model: HasFeatures, override val name: String)
@@ -184,7 +210,17 @@ class StructFeature[TValue: ClassTag](model: HasFeatures, override val name: Str
     val fs: FileSystem = FileSystem.get(uri, spark.sparkContext.hadoopConfiguration)
     val dataPath = getFieldPath(path, field)
     if (fs.exists(dataPath)) {
-      Some(spark.sparkContext.objectFile[TValue](dataPath.toString).first)
+      try {
+        Some(spark.sparkContext.objectFile[TValue](dataPath.toString).first)
+      } catch {
+        case e: org.apache.spark.SparkException
+            if e.getCause.isInstanceOf[java.io.InvalidClassException] =>
+          logger.info(
+            "Detected InvalidClassException during deserialization, attempting to load as legacy object.")
+          Some(deserializeLegacyObject[TValue](spark, dataPath.toString).first)
+        case e: Exception =>
+          throw e
+      }
     } else {
       None
     }
@@ -230,31 +266,6 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
     spark.sparkContext.parallelize(value.toSeq).saveAsObjectFile(dataPath.toString)
   }
 
-  /** Loads a scala tuple of TKey and TValue from a SequenceFile containing serialized objects. It
-    * tries to load the tuple across Scala version.
-    *
-    * Adapted from sparkContext.objectFile:
-    *
-    * Load an RDD saved as a SequenceFile containing serialized objects, with NullWritable keys
-    * and BytesWritable values that contain a serialized partition.
-    *
-    * @param path
-    *   directory to the input data files, the path can be comma separated paths as a list of
-    *   inputs
-    * @return
-    *   RDD representing deserialized data from the file(s)
-    */
-  private def deserializeOldTupleObjects[K, V](spark: SparkSession, path: String): RDD[(K, V)] = {
-    spark.sparkContext
-      .sequenceFile(
-        path,
-        classOf[NullWritable],
-        classOf[BytesWritable],
-        spark.sparkContext.defaultMinPartitions)
-      .flatMap((x: (NullWritable, BytesWritable)) =>
-        LegacyObjectInputStream.deserializeArray[(K, V)](x._2.getBytes, "scala.Tuple2"))
-  }
-
   override def deserializeObject(
       spark: SparkSession,
       path: String,
@@ -270,7 +281,7 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
             if e.getCause.isInstanceOf[java.io.InvalidClassException] =>
           logger.info(
             "Detected InvalidClassException during deserialization, attempting to load as legacy object.")
-          Some(deserializeOldTupleObjects[TKey, TValue](spark, dataPath.toString).collect.toMap)
+          Some(deserializeLegacyObject[(TKey, TValue)](spark, dataPath.toString).collect.toMap)
         case e: Exception =>
           throw e
       }

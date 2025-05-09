@@ -8,6 +8,7 @@ import scala.collection.immutable.HashMap.empty
   * @param orig
   *   HashMap to init
   */
+@SerialVersionUID(212L)
 class LegacyHashMapSerializationProxy(@transient private var orig: HashMap[Any, Any])
     extends Serializable {
   private def writeObject(out: java.io.ObjectOutputStream): Unit = {

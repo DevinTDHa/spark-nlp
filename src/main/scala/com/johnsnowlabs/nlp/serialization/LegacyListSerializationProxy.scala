@@ -26,7 +26,7 @@ class LegacyListSerializationProxy(@transient private var orig: List[Any]) exten
       case n: Number => n.toString
       case b: Boolean => b.toString
       case null => "null"
-      case other => s"instance of ${other.getClass.getName}"
+      case other => s"instance(${other.getClass.getName})"
     }
   }
 
@@ -35,14 +35,18 @@ class LegacyListSerializationProxy(@transient private var orig: List[Any]) exten
   private def readObject(in: ObjectInputStream) {
     in.defaultReadObject()
     val builder = List.newBuilder[Any]
-    while (true) in.readObject match {
-      case LegacyListSerializeEnd =>
+    while (true) {
+      val obj = in.readObject
+      val isListEnd = obj.getClass.getName == LegacyListSerializeEnd.getClass.getName
+      if (isListEnd) {
         println("DHA: LLSP: reached end of list.")
         orig = builder.result()
         return
-      case a =>
-        println(s"DHA: LLSP: adding to builder list: ${a.getClass.getName}=${tmpGetObjVal(a)}")
-        builder += a // original code casts to type, we use Any
+      } else {
+        println(
+          s"DHA: LLSP: adding to builder list: ${obj.getClass.getName}=${tmpGetObjVal(obj)}")
+        builder += obj // original code casts to type, we use Any
+      }
     }
   }
 

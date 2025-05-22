@@ -46,8 +46,13 @@ class LegacyObjectInputStream(
         case "scala.collection.immutable.HashMap$SerializationProxy" =>
           ObjectStreamClass.lookup(classOf[LegacyHashMapSerializationProxy])
         case "scala.collection.immutable.List$SerializationProxy" =>
+          println("DHA: Using LegacyListSerializationProxy")
           ObjectStreamClass.lookup(classOf[LegacyListSerializationProxy])
-        case _ => null
+        case "scala.collection.immutable.ListSerializeEnd$" =>
+          println("DHA: Using LegacyListSerializationEnd")
+          val res = ObjectStreamClass.lookup(LegacyListSerializeEnd.getClass)
+          res
+        case _ => null // No replacement class found
       }
     }
 
@@ -58,7 +63,7 @@ class LegacyObjectInputStream(
       }
       val localClassDescriptor: ObjectStreamClass = classForName match {
         case Success(clazz) => ObjectStreamClass.lookup(clazz)
-        case Failure(_) => checkSerializationProxy() // HashMap case
+        case Failure(_) => checkSerializationProxy() // SerializationProxy case
       }
 
       if (localClassDescriptor != null) {
@@ -73,6 +78,36 @@ class LegacyObjectInputStream(
 
     resultClassDescriptor
   }
+
+//  /** Resolve serialization proxies into their actual collection implementations. This is called
+//    * by the JVM during deserialization for each object read from the stream.
+//    */
+//  @throws[IOException]("if an I/O error occurs")
+//  @throws[ClassNotFoundException]("if the class of a serialized object could not be found")
+//  override protected def resolveObject(obj: Any): Any = {
+//    obj match {
+//      // Handle list serialization proxies
+//      case proxy: LegacyListSerializationProxy =>
+//        // Access the private field 'orig' via reflection
+//        val field = classOf[LegacyListSerializationProxy].getDeclaredField("orig")
+//        field.setAccessible(true)
+//        val list = field.get(proxy).asInstanceOf[List[Any]]
+//        list
+//
+//      // Handle hash map serialization proxies
+//      case proxy: LegacyHashMapSerializationProxy =>
+//        val field = classOf[LegacyHashMapSerializationProxy].getDeclaredField("orig")
+//        field.setAccessible(true)
+//        val map = field.get(proxy).asInstanceOf[scala.collection.immutable.HashMap[Any, Any]]
+//        map
+//
+//      case other =>
+//        super.resolveObject(other)
+//    }
+//  }
+//
+//  /** Enable resolveObject to automatically convert serialization proxies */
+//  enableResolveObject(true)
 }
 
 object LegacyObjectInputStream {

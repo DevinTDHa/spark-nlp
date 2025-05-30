@@ -16,13 +16,14 @@
 package com.johnsnowlabs.reader
 
 import com.johnsnowlabs.nlp.IAnnotation
+import com.johnsnowlabs.reader.util.HasPdfProperties
 import com.johnsnowlabs.reader.util.pdf._
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.text.PDFTextStripper
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.shared.{HasInputCol, HasOutputCol}
-import org.apache.spark.ml.param.{BooleanParam, IntParam, Param, ParamMap}
+import org.apache.spark.ml.param.{BooleanParam, Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.{col, posexplode_outer, udf}
@@ -32,6 +33,61 @@ import org.apache.spark.sql.{DataFrame, Dataset}
 import java.io.ByteArrayOutputStream
 import scala.util.{Failure, Success, Try}
 
+/** Extract text from PDF document to a single string or to several strings per each page. Input
+  * is a column with binary representation of PDF document. For the output it generates column
+  * with text and page number. Explode each page as separate row if split to page enabled.
+  *
+  * It can be configured with the following properties:
+  *   - pageNumCol: Page number output column name.
+  *   - originCol: Input column name with original path of file.
+  *   - partitionNum: Number of partitions. By default, it is set to 0.
+  *   - storeSplittedPdf: Force to store bytes content of split pdf. By default, it is set to
+  *     `false`.
+  *   - splitPage: Enable/disable splitting per page to identify page numbers and improve
+  *     performance. By default, it is set to `true`.
+  *   - onlyPageNum: Extract only page numbers. By default, it is set to `false`.
+  *   - textStripper: Text stripper type used for output layout and formatting.
+  *   - sort: Enable/disable sorting content on the page. By default, it is set to `false`.
+  *
+  * ==Example==
+  * {{{
+  *     val pdfToText = new PdfToText()
+  *       .setStoreSplittedPdf(true)
+  *       .setSplitPage(true)
+  *     val filesDf = spark.read.format("binaryFile").load("Documents/files/pdf")
+  *     val pipelineModel = new Pipeline()
+  *       .setStages(Array(pdfToText))
+  *       .fit(filesDf)
+  *
+  *     val pdfDf = pipelineModel.transform(filesDf)
+  *
+  * pdfDf.show()
+  * +--------------------+--------------------+------+--------------------+
+  * |                path|    modificationTime|length|                text|
+  * +--------------------+--------------------+------+--------------------+
+  * |file:/Users/paula...|2025-05-15 11:33:...| 25803|This is a Title \...|
+  * |file:/Users/paula...|2025-05-15 11:33:...| 15629|                  \n|
+  * |file:/Users/paula...|2025-05-15 11:33:...| 15629|                  \n|
+  * |file:/Users/paula...|2025-05-15 11:33:...| 15629|                  \n|
+  * |file:/Users/paula...|2025-05-15 11:33:...|  9487|   This is a page.\n|
+  * |file:/Users/paula...|2025-05-15 11:33:...|  9487|This is another p...|
+  * |file:/Users/paula...|2025-05-15 11:33:...|  9487| Yet another page.\n|
+  * |file:/Users/paula...|2025-05-15 11:56:...|  1563|Hello, this is li...|
+  * +--------------------+--------------------+------+--------------------+
+  *
+  * pdfDf.printSchema()
+  * root
+  *  |-- path: string (nullable = true)
+  *  |-- modificationTime: timestamp (nullable = true)
+  *  |-- length: long (nullable = true)
+  *  |-- text: string (nullable = true)
+  *  |-- height_dimension: integer (nullable = true)
+  *  |-- width_dimension: integer (nullable = true)
+  *  |-- content: binary (nullable = true)
+  *  |-- exception: string (nullable = true)
+  *  |-- pagenum: integer (nullable = true)
+  * }}}
+  */
 class PdfToText(override val uid: String)
     extends Transformer
     with DefaultParamsWritable
@@ -39,7 +95,8 @@ class PdfToText(override val uid: String)
     with HasInputCol
     with HasOutputCol
     with HasLocalProcess
-    with PdfToTextTrait {
+    with PdfToTextTrait
+    with HasPdfProperties {
 
   def this() = this(Identifiable.randomUID("PDF_TO_TEXT_TRANSFORMER"))
 
@@ -62,64 +119,13 @@ class PdfToText(override val uid: String)
       .add(StructField($(pageNumCol), IntegerType, nullable = false))
   }
 
-  final val pageNumCol = new Param[String](this, "pageNumCol", "Page number output column name.")
-  final val splitPage = new BooleanParam(
-    this,
-    "splitPage",
-    "Enable/disable splitting per page to identify page numbers and improve performance.")
-  final val originCol =
-    new Param[String](this, "originCol", "Input column name with original path of file.")
-  final val partitionNum = new IntParam(this, "partitionNum", "Number of partitions.")
-  final val onlyPageNum = new BooleanParam(this, "onlyPageNum", "Extract only page numbers.")
-  final val storeSplittedPdf =
-    new BooleanParam(this, "storeSplittedPdf", "Force to store bytes content of splitted pdf.")
-  final val textStripper = new Param[String](
-    this,
-    "textStripper",
-    "Text stripper type used for output layout and formatting")
-  final val sort = new BooleanParam(this, "sort", "Enable/disable sorting content on the page.")
-
-  /** @group setParam */
-  def setPageNumCol(value: String): this.type = set(pageNumCol, value)
-
-  /** @group setParam */
-  def setSplitPage(value: Boolean): this.type = set(splitPage, value)
-
-  /** @group getParam */
-  def setOriginCol(value: String): this.type = set(originCol, value)
-
-  /** @group setParam */
+  /** @param value Name of input annotation col */
   def setInputCol(value: String): this.type = set(inputCol, value)
 
-  /** @group setParam */
+  /** @param value Name of extraction output col */
   def setOutputCol(value: String): this.type = set(outputCol, value)
 
-  /** @group getParam */
-  def setPartitionNum(value: Int): this.type = set(partitionNum, value)
-
-  /** @group setParam */
-  def setOnlyPageNum(value: Boolean): this.type = set(onlyPageNum, value)
-
-  /** @group setParam */
-  def setStoreSplittedPdf(value: Boolean): this.type = set(storeSplittedPdf, value)
-
-  /** @group setParam */
-  def setTextStripper(value: String): this.type = set(textStripper, value)
-
-  /** @group setParam */
-  def setSort(value: Boolean): this.type = set(sort, value)
-
-  setDefault(
-    inputCol -> "content",
-    outputCol -> "text",
-    pageNumCol -> "pagenum",
-    originCol -> "path",
-    partitionNum -> 0,
-    onlyPageNum -> false,
-    storeSplittedPdf -> false,
-    splitPage -> true,
-    sort -> false,
-    textStripper -> TextStripperType.PDF_TEXT_STRIPPER)
+  setDefault(inputCol -> "content", outputCol -> "text")
 
   private def transformUDF: UserDefinedFunction = udf(
     (path: String, content: Array[Byte]) => {

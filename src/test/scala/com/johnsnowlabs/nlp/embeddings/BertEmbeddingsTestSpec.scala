@@ -27,10 +27,11 @@ import org.apache.spark.sql.functions.{col, explode, size}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class BertEmbeddingsTestSpec extends AnyFlatSpec {
+  import ResourceHelper.spark.implicits._
 
-  "Bert Embeddings" should "correctly embed tokens and sentences" taggedAs SlowTest in {
+  behavior of "Bert Embeddings"
 
-    import ResourceHelper.spark.implicits._
+  it should "correctly embed tokens and sentences" taggedAs SlowTest in {
 
     val ddd = Seq("Something is weird on the notebooks, something is happening.").toDF("text")
 
@@ -68,7 +69,7 @@ class BertEmbeddingsTestSpec extends AnyFlatSpec {
 
   }
 
-  "Bert Embeddings" should "correctly work with empty tokens" taggedAs SlowTest in {
+  it should "correctly work with empty tokens" taggedAs SlowTest in {
 
     val smallCorpus = ResourceHelper.spark.read
       .option("header", "true")
@@ -104,7 +105,7 @@ class BertEmbeddingsTestSpec extends AnyFlatSpec {
     }
   }
 
-  "Bert Embeddings" should "benchmark test" taggedAs SlowTest in {
+  it should "benchmark test" taggedAs SlowTest in {
     import ResourceHelper.spark.implicits._
 
     val conll = CoNLL(explodeSentences = false)
@@ -146,7 +147,7 @@ class BertEmbeddingsTestSpec extends AnyFlatSpec {
     assert(totalTokens == totalEmbeddings)
   }
 
-  "Bert Embeddings" should "correctly load custom model with extracted signatures" taggedAs SlowTest in {
+  it should "correctly load custom model with extracted signatures" taggedAs SlowTest in {
 
     import ResourceHelper.spark.implicits._
 
@@ -176,7 +177,7 @@ class BertEmbeddingsTestSpec extends AnyFlatSpec {
     pipelineModel.transform(ddd)
   }
 
-  "Bert Embeddings" should "be aligned with custom tokens from Tokenizer" taggedAs SlowTest in {
+  it should "be aligned with custom tokens from Tokenizer" taggedAs SlowTest in {
 
     import ResourceHelper.spark.implicits._
 
@@ -228,6 +229,32 @@ class BertEmbeddingsTestSpec extends AnyFlatSpec {
 
     assert(totalTokens == totalEmbeddings)
 
+  }
+
+  it should "be serializable" taggedAs SlowTest in {
+    val model = BertEmbeddings.pretrained()
+
+    val savedPath = "tmp_bert_embeddings"
+    model.write.overwrite().save(savedPath)
+
+    val ddd = Seq("Something is weird on the notebooks, something is happening.").toDF("text")
+
+    val document = new DocumentAssembler()
+      .setInputCol("text")
+      .setOutputCol("document")
+
+    val tokenizer = new Tokenizer()
+      .setInputCols(Array("document"))
+      .setOutputCol("token")
+
+    val loadedModel = BertEmbeddings
+      .load(savedPath)
+      .setInputCols(Array("token", "document"))
+      .setOutputCol("bert")
+
+    val pipeline = new Pipeline().setStages(Array(document, tokenizer, loadedModel))
+
+    pipeline.fit(ddd).transform(ddd).show()
   }
 
 }

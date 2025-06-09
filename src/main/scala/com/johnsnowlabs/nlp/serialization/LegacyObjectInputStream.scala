@@ -42,6 +42,7 @@ class LegacyObjectInputStream(
     var resultClassDescriptor = super.readClassDescriptor // initially streams descriptor
 
     def checkSerializationProxy(): ObjectStreamClass = {
+/*      println("LOIS: Checking for proxy")*/
       resultClassDescriptor.getName match {
         case "scala.collection.immutable.HashMap$SerializationProxy" =>
           ObjectStreamClass.lookup(classOf[LegacyHashMapSerializationProxy])
@@ -50,13 +51,14 @@ class LegacyObjectInputStream(
         case "scala.collection.immutable.List$SerializationProxy" =>
           ObjectStreamClass.lookup(classOf[LegacyListSerializationProxy])
         case "scala.collection.immutable.ListSerializeEnd$" =>
-          println("DHA: Using LegacyListSerializationEnd")
+/*          println("DHA: Using LegacyListSerializationEnd")*/
           ObjectStreamClass.lookup(LegacyListSerializeEnd.getClass)
         case _ => null // No replacement class found
       }
     }
 
     // Ignore all serialVersionUIDs, if they are not array
+/*    println(s"LOIS: Checking class descriptor for ${resultClassDescriptor.getName}")*/
     if (!resultClassDescriptor.getName.startsWith("[")) {
       val classForName = Try {
         Class.forName(resultClassDescriptor.getName, false, getClass.getClassLoader)
@@ -71,6 +73,8 @@ class LegacyObjectInputStream(
         val streamSUID = resultClassDescriptor.getSerialVersionUID
         if (streamSUID != localSUID) { // check for serialVersionUID mismatch.
           // Use local class descriptor for deserialization
+/*          println(
+            s"LOIS: SUID mismatch. Using ${localClassDescriptor.getName} for ${resultClassDescriptor.getName}")*/
           resultClassDescriptor = localClassDescriptor
         }
       }

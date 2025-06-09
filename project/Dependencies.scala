@@ -145,5 +145,9 @@ object Dependencies {
   val poiDocx = "org.apache.poi" % "poi-ooxml" % poiVersion
   val scratchpad = "org.apache.poi" % "poi-scratchpad" % poiVersion
 
+  // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
+  val protobufVersion = "4.31.1"
+  val protobuf = "com.google.protobuf" % "protobuf-java" % protobufVersion
+
   /** ------- Dependencies end  ------- */
 }

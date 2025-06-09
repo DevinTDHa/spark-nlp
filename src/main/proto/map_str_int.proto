@@ -1,0 +1,11 @@
+edition = "2023";
+
+package com.johnsnowlabs.proto;
+
+option java_multiple_files = true;
+option java_package = "com.johnsnowlabs.proto";
+option java_outer_classname = "MapStrIntProto";
+
+message MapStrInt {
+  map<string, int32> data = 1;
+}

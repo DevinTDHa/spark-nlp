@@ -17,9 +17,11 @@
 package com.johnsnowlabs.nlp.serialization
 
 import com.github.liblevenshtein.serialization.PlainTextSerializer
+import com.google.protobuf.GeneratedMessage
 import com.johnsnowlabs.nlp.HasFeatures
 import com.johnsnowlabs.nlp.annotators.spell.context.parser.VocabParser
 import com.johnsnowlabs.nlp.util.io.ResourceHelper
+import com.johnsnowlabs.proto.{MapStrInt, MapStrIntProto}
 import com.johnsnowlabs.util.{ConfigHelper, ConfigLoader}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.io.{BytesWritable, NullWritable}
@@ -28,6 +30,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.jdk.CollectionConverters
+import scala.jdk.CollectionConverters.{MapHasAsJava, MapHasAsScala}
 import scala.reflect.ClassTag
 
 abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
@@ -50,7 +54,6 @@ abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
   final protected var fallbackLazyValue: Option[() => TComplete] = None
   final protected var isProtected: Boolean = false
 
-  // TODO: This should be kryo?
   final def serialize(
       spark: SparkSession,
       path: String,
@@ -186,6 +189,62 @@ abstract class Feature[Serializable1, Serializable2, TComplete: ClassTag](
       .flatMap((x: (NullWritable, BytesWritable)) =>
         LegacyObjectInputStream.deserializeArray[ObjectType](x._2.getBytes))
   }
+
+  /** Saves a Protocol Buffer message to a file in the specified path.
+    *
+    * @param builder
+    *   The Protocol Buffer message builder to serialize.
+    * @param folder
+    *   The folder where the serialized message will be saved.
+    */
+  protected def saveProto(
+      builder: GeneratedMessage.Builder[_],
+      field: String,
+      folder: String): Unit = {
+    val uri = new java.net.URI(folder.replace("\\", "/"))
+    val fs: FileSystem = FileSystem.get(uri, spark.sparkContext.hadoopConfiguration)
+    val folderPath = new Path(folder)
+    if (!fs.exists(folderPath)) {
+      fs.mkdirs(folderPath)
+    }
+    val filePath = new Path(folderPath, s"$field.pb")
+    if (fs.exists(filePath)) {
+      fs.delete(filePath, true) // TODO: is this ok?
+    }
+
+    val outputStream = fs.create(filePath)
+    try {
+      builder.build().writeTo(outputStream)
+    } finally {
+      outputStream.close()
+    }
+  }
+
+  /** Loads the Feature from a Protocol Buffer message from the specified folder
+    *
+    * @param field
+    *   The field to load
+    * @param folder
+    *   The folder of the field
+    * @return
+    *   The deserialized object
+    */
+  protected def loadProto(field: String, folder: Path): Option[Map[String, Int]] = {
+    val filePath = new Path(folder, s"$field.pb")
+    val fs: FileSystem = FileSystem.get(filePath.toUri, spark.sparkContext.hadoopConfiguration)
+    if (fs.exists(filePath)) {
+      val inputStream = fs.open(filePath)
+      try {
+        // TODO: Need to match
+        val proto = MapStrInt.parseFrom(inputStream)
+        Some(proto.getDataMap.asScala.map { case (k, v) => (k, v.toInt) }.toMap)
+      } finally {
+        inputStream.close()
+      }
+    } else {
+      None
+    }
+  }
 }
 
 class StructFeature[TValue: ClassTag](model: HasFeatures, override val name: String)
@@ -262,8 +321,12 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
       field: String,
       value: Map[TKey, TValue]): Unit = {
     val dataPath = getFieldPath(path, field)
-    // TODO: Change this to kryo or some better serializer
-    spark.sparkContext.parallelize(value.toSeq).saveAsObjectFile(dataPath.toString)
+//    spark.sparkContext.parallelize(value.toSeq).saveAsObjectFile(dataPath.toString)
+    val protoMapBuilder: MapStrInt.Builder = MapStrInt.newBuilder()
+    // TODO: Use a more generic MapStrAny or something like that
+    protoMapBuilder.putAllData(value.asJava.asInstanceOf[java.util.Map[String, Integer]])
+
+    saveProto(protoMapBuilder, field, dataPath.toString)
   }
 
   override def deserializeObject(
@@ -273,17 +336,23 @@ class MapFeature[TKey: ClassTag, TValue: ClassTag](model: HasFeatures, override 
     val uri = new java.net.URI(path.replace("\\", "/"))
     val fs: FileSystem = FileSystem.get(uri, spark.sparkContext.hadoopConfiguration)
     val dataPath = getFieldPath(path, field)
+    val isProto = fs.exists(Path.mergePaths(dataPath, new Path(s"/$field.pb")))
     if (fs.exists(dataPath)) {
-      try {
-        Some(spark.sparkContext.objectFile[(TKey, TValue)](dataPath.toString).collect.toMap)
-      } catch {
-        case e: org.apache.spark.SparkException
-            if e.getCause.isInstanceOf[java.io.InvalidClassException] =>
-          println(
-            "WARNING: Detected InvalidClassException during deserialization, attempting to load as legacy object.")
-          Some(deserializeLegacyObject[(TKey, TValue)](spark, dataPath.toString).collect.toMap)
-        case e: Exception =>
-          throw e
+      if (isProto) {
+        loadProto(field, dataPath).asInstanceOf[Option[Map[TKey, TValue]]]
+      } else {
+        try {
+          Some(spark.sparkContext.objectFile[(TKey, TValue)](dataPath.toString).collect.toMap)
+        } catch {
+          case e: org.apache.spark.SparkException
+              if e.getCause.isInstanceOf[java.io.InvalidClassException] =>
+            println(
+              "WARNING: Detected InvalidClassException during deserialization, attempting to load as legacy object.")
+            Some(deserializeLegacyObject[(TKey, TValue)](spark, dataPath.toString).collect.toMap)
+          case e: Exception =>
+            throw e
+        }
+
       }
     } else {
       None

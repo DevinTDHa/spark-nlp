@@ -7,7 +7,8 @@ import com.johnsnowlabs.nlp.annotators.TokenizerModel
 import com.johnsnowlabs.nlp.annotators.er.{
   AhoCorasickAutomaton,
   EntityPattern,
-  EntityRulerFeatures
+  EntityRulerFeatures,
+  FlattenEntityPattern
 }
 import com.johnsnowlabs.nlp.annotators.parser.dep.GreedyTransition.DependencyMaker
 import com.johnsnowlabs.nlp.annotators.parser.dep.Tagger
@@ -21,7 +22,11 @@ import com.johnsnowlabs.nlp.{
   HasFeatures,
   ParamsAndFeaturesReadable
 }
+import com.johnsnowlabs.tags.SlowTest
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
+
+import java.lang.reflect.{Field, Modifier}
 
 class MockFeaturesModel(override val uid: String)
     extends AnnotatorModel[MockFeaturesModel]
@@ -166,23 +171,50 @@ class MockFeaturesModel(override val uid: String)
 object MockFeaturesModel extends ParamsAndFeaturesReadable[MockFeaturesModel] {}
 
 class FeaturesProtoTestSpec extends AnyFlatSpec {
+  val dummyArrayTupleStringString: Array[(String, String)] = Array(("a", "b"), ("c", "d"))
+  val dummyArrayString: Array[String] = Array("foo", "bar")
+  val dummyMapIntTupleInt: Map[Int, (Int, Int)] = Map(1 -> (2, 3), 4 -> (5, 6))
+  val dummyMapIntString: Map[Int, String] = Map(1 -> "one", 2 -> "two")
+  val dummyMapStringArrayFloat: Map[String, Array[Float]] = Map("a" -> Array(1.0f, 2.0f))
+  val dummyMapStringArrayString: Map[String, Array[String]] = Map("a" -> Array("b", "c"))
+  val dummyMapStringBigInt: Map[String, BigInt] = Map("big" -> BigInt(1234567890))
+  val dummyMapStringDouble: Map[String, Double] = Map("pi" -> 3.14)
+  val dummyMapStringInt: Map[String, Int] = Map("one" -> 1, "two" -> 2)
+  val dummyMapStringLong: Map[String, Long] = Map("long" -> 123456789L)
+  val dummyMapStringMapStringFloat: Map[String, Map[String, Float]] = Map(
+    "outer" -> Map("inner" -> 1.23f))
+  val dummyMapStringString: Map[String, String] = Map("hello" -> "world")
+
+  val dummyMapStringMapStringDouble: Map[String, Map[String, Double]] = Map(
+    "outer" -> Map(("inner" -> 1.23d)))
+  val dummyAveragedPerceptron: AveragedPerceptron =
+    AveragedPerceptron(dummyArrayString, dummyMapStringString, dummyMapStringMapStringDouble)
+  val dummyClassifierDatasetEncoderParams: ClassifierDatasetEncoderParams =
+    ClassifierDatasetEncoderParams(dummyArrayString)
+  val dummyDatasetEncoderParams: DatasetEncoderParams =
+    DatasetEncoderParams(dummyArrayString.toList, "test".toList, List.empty, 123, "test")
+  val dummyDependencyMaker = new DependencyMaker(
+    new Tagger(dummyArrayString.toVector, dummyMapStringInt))
+  val dummyDependencyPipe: DependencyPipe = createDependencyPipeForTesting(new Options())
+  val dummyArrayFloat: Array[Float] = Array(1.0f, 2.0f)
+  val dummyLinearChainCrfModel = new LinearChainCrfModel(
+    dummyArrayFloat,
+    new DatasetMetadata(
+      Array("A", "B"),
+      Array(Attr(0, "attr1"), Attr(1, "attr2")),
+      Array(AttrFeature(0, 0, 0), AttrFeature(1, 1, 1)),
+      Array(Transition(0, 1), Transition(1, 0)),
+      Array(AttrStat(1, 1.0f), AttrStat(2, 2.0f), AttrStat(3, 3.0f), AttrStat(4, 4.0f))))
+  val dummyAhoCorasickAutomaton = new AhoCorasickAutomaton(
+    "test",
+    Array(EntityPattern("test", Seq("test"), Some("test"), Some(true))),
+    false)
+  val dummyVectorTupleIntBoolIntInt: Vector[(Int, Boolean, Int, Int)] = Vector((1, true, 3, 4))
+  val dummyMapTupleIntInt: Map[(Int, Int), Int] = Map((1, 2) -> 3)
 
   def setupMockFeaturesModel(): MockFeaturesModel = {
     val mockModel = new MockFeaturesModel
     // Fill with dummy data
-    val dummyArrayTupleStringString = Array(("a", "b"), ("c", "d"))
-    val dummyArrayString = Array("foo", "bar")
-    val dummyMapIntTupleInt = Map(1 -> (2, 3), 4 -> (5, 6))
-    val dummyMapIntString = Map(1 -> "one", 2 -> "two")
-    val dummyMapStringArrayFloat = Map("a" -> Array(1.0f, 2.0f))
-    val dummyMapStringArrayString = Map("a" -> Array("b", "c"))
-    val dummyMapStringBigInt = Map("big" -> BigInt(1234567890))
-    val dummyMapStringDouble = Map("pi" -> 3.14)
-    val dummyMapStringInt = Map("one" -> 1, "two" -> 2)
-    val dummyMapStringLong = Map("long" -> 123456789L)
-    val dummyMapStringMapStringFloat = Map("outer" -> Map("inner" -> 1.23f))
-    val dummyMapStringString = Map("hello" -> "world")
-
     mockModel.setArrayTupleStringString(dummyArrayTupleStringString)
     mockModel.setArrayString(dummyArrayString)
     mockModel.setMapIntTupleInt(dummyMapIntTupleInt)
@@ -197,31 +229,6 @@ class FeaturesProtoTestSpec extends AnyFlatSpec {
     mockModel.setMapStringString(dummyMapStringString)
 
     // Fill struct features with dummy data
-    val dummyMapStringMapStringDouble = Map("outer" -> Map(("inner" -> 1.23d)))
-    val dummyAveragedPerceptron =
-      AveragedPerceptron(dummyArrayString, dummyMapStringString, dummyMapStringMapStringDouble)
-    val dummyClassifierDatasetEncoderParams = ClassifierDatasetEncoderParams(dummyArrayString)
-    val dummyDatasetEncoderParams =
-      DatasetEncoderParams(dummyArrayString.toList, "test".toList, List.empty, 123, "test")
-    val dummyDependencyMaker = new DependencyMaker(
-      new Tagger(dummyArrayString.toVector, dummyMapStringInt))
-    val dummyDependencyPipe = new DependencyPipe(new Options())
-    val dummyArrayFloat = Array(1.0f, 2.0f)
-    val dummyLinearChainCrfModel = new LinearChainCrfModel(
-      dummyArrayFloat,
-      new DatasetMetadata(
-        dummyArrayString,
-        Array(Attr(1, "one", isNumerical = true)),
-        Array(AttrFeature(1, 2, 3)),
-        Array(Transition(1, 2)),
-        Array(AttrStat(1, 123f))))
-    val dummyAhoCorasickAutomaton = new AhoCorasickAutomaton(
-      dummyArrayString.head,
-      Array(EntityPattern("test", dummyArrayString.toSeq, Some("test"), Some(true))),
-      false)
-    val dummyVectorTupleIntBoolIntInt = Vector((1, true, 3, 4))
-    val dummyMapTupleIntInt = Map((1, 2) -> 3)
-
     mockModel.setStructAveragedPerceptron(dummyAveragedPerceptron)
     mockModel.setStructClassifierDatasetEncoderParams(dummyClassifierDatasetEncoderParams)
     mockModel.setStructDatasetEncoderParams(dummyDatasetEncoderParams)
@@ -237,7 +244,6 @@ class FeaturesProtoTestSpec extends AnyFlatSpec {
     mockModel.setStructOptionAhoCorasickAutomaton(Some(dummyAhoCorasickAutomaton))
     mockModel.setStructOptionMapStringInt(Some(Map("a" -> 1, "b" -> 2)))
     mockModel.setStructOptions(new Options())
-    // TODO: We should check for this data and if it is readable.
     mockModel.setStructParameters(new Parameters(dummyDependencyPipe, new Options()))
     mockModel.setStructRuleFactory(
       new RuleFactory(MatchStrategy.MATCH_ALL, TransformStrategy.NO_TRANSFORM))
@@ -249,7 +255,95 @@ class FeaturesProtoTestSpec extends AnyFlatSpec {
     mockModel
   }
 
-  "MockFeaturesModel" should "serialize and deserialize correctly using proto" in {
+  // Helper method to create DependencyPipe for testing
+  private def createDependencyPipeForTesting(options: Options): DependencyPipe = {
+    // Use reflection to access the package-private constructor
+    val dependencyPipeClass = classOf[DependencyPipe]
+    val constructor = dependencyPipeClass.getDeclaredConstructor(classOf[Options])
+    constructor.setAccessible(true)
+    val instance: DependencyPipe = constructor.newInstance(options)
+
+    val typesField = dependencyPipeClass.getDeclaredField("types")
+    typesField.setAccessible(true)
+    typesField.set(instance, dummyArrayString)
+
+    instance
+  }
+
+  private def assertSerializableFields(obj1: Any, obj2: Any): Unit = {
+    def getAllNonTransientFields(obj: Any): Seq[Field] = {
+      def getAllFieldsRecursively(c: Class[_]): Seq[Field] =
+        if (c == null || c == classOf[Object]) Seq.empty
+        else c.getDeclaredFields ++ getAllFieldsRecursively(c.getSuperclass)
+
+      val nonTransientFields =
+        getAllFieldsRecursively(obj.getClass).filter(f => !Modifier.isTransient(f.getModifiers))
+      nonTransientFields.foreach(_.setAccessible(true))
+      nonTransientFields
+    }
+
+    def getValues(obj: Any): Seq[Any] = getAllNonTransientFields(obj).map(_.get(obj))
+
+    val values1 = getValues(obj1)
+    val values2 = getValues(obj2)
+
+    values1 shouldBe values2
+  }
+
+  // Maps
+  private def assertSameMap[K, V](map1: Map[K, V], map2: Map[K, V]): Unit = map1 shouldBe map2
+
+  // Maps with Arrays as values
+  private def assertMapArray[K](map1: Map[K, Array[_]], map2: Map[K, Array[_]]): Unit =
+    map1.zip(map2).map { case ((k1, v1), (k2, v2)) =>
+      assert(k1 == k2)
+      assert(v1 sameElements v2)
+    }
+
+  private def assertAveragedPerceptron(
+      model: MockFeaturesModel,
+      loadedModel: MockFeaturesModel): Unit = {
+//    model.getStructAveragedPerceptron shouldEqual loadedModel.getStructAveragedPerceptron
+    val AveragedPerceptron(tags, taggedWorkBook, featuresWeight) =
+      model.getStructAveragedPerceptron
+    val AveragedPerceptron(loadedTags, loadedTaggedWorkBook, loadedFeaturesWeight) =
+      loadedModel.getStructAveragedPerceptron
+
+    loadedTags shouldBe tags
+    loadedTaggedWorkBook shouldBe taggedWorkBook
+    assertMapArray(
+      loadedFeaturesWeight.map { case (str, stringToDouble) => (str, stringToDouble.toArray) },
+      featuresWeight.map { case (str, stringToDouble) => (str, stringToDouble.toArray) })
+
+  }
+
+  private def assertDependencyMaker(
+      model: MockFeaturesModel,
+      loadedModel: MockFeaturesModel): Unit = {
+    val data = model.getStructDependencyMaker
+    val dataLoaded = loadedModel.getStructDependencyMaker
+
+    // TODO: This should compare all fields of the class...
+    val taggerField = classOf[DependencyMaker].getDeclaredField("tagger")
+    taggerField.setAccessible(true)
+    val taggerValue = taggerField.get(data).asInstanceOf[Tagger]
+    val taggerValueLoaded = taggerField.get(dataLoaded).asInstanceOf[Tagger]
+
+    taggerValue.toString shouldEqual taggerValueLoaded.toString
+  }
+
+  private def assertStructDependencyPipe(
+      model: MockFeaturesModel,
+      loadedModel: MockFeaturesModel) = {
+    val data = model.getStructDependencyPipe
+    val dataLoaded = loadedModel.getStructDependencyPipe
+
+    // TODO: This should compare all fields of the class...
+    data.getTypes shouldBe dataLoaded.getTypes
+  }
+
+  // TODO: Something is really slow. need to profile.
+  "MockFeaturesModel" should "serialize and deserialize correctly using proto" taggedAs SlowTest in {
     val model = setupMockFeaturesModel()
     // Save model features
     val tmpPath = "scala212_MockFeaturesModel"
@@ -259,14 +353,8 @@ class FeaturesProtoTestSpec extends AnyFlatSpec {
 
     // Compare all features
     // Arrays
-    assert(
-      model.arrayTupleStringString.getOrDefault.sameElements(
-        loadedModel.arrayTupleStringString.getOrDefault))
-    assert(model.arrayString.getOrDefault.sameElements(loadedModel.arrayString.getOrDefault))
-
-    // Maps
-    def assertSameMap[K, V](map1: Map[K, V], map2: Map[K, V]) =
-      assert(map1.toSeq == map2.toSeq)
+    model.arrayTupleStringString.getOrDefault shouldBe loadedModel.arrayTupleStringString.getOrDefault
+    model.arrayString.getOrDefault shouldBe loadedModel.arrayString.getOrDefault
 
     assertSameMap(model.mapIntTupleInt.getOrDefault, loadedModel.mapIntTupleInt.getOrDefault)
     assertSameMap(model.mapIntString.getOrDefault, loadedModel.mapIntString.getOrDefault)
@@ -279,12 +367,6 @@ class FeaturesProtoTestSpec extends AnyFlatSpec {
       loadedModel.mapStringMapStringFloat.getOrDefault)
     assertSameMap(model.mapStringString.getOrDefault, loadedModel.mapStringString.getOrDefault)
 
-    // Maps with Arrays as values
-    def assertMapArray[K](map1: Map[K, Array[_]], map2: Map[K, Array[_]]): Unit =
-      map1.zip(map2).map { case ((k1, v1), (k2, v2)) =>
-        assert(k1 == k2)
-        assert(v1 sameElements v2)
-      }
     assertMapArray(
       model.mapStringArrayFloat.getOrDefault,
       loadedModel.mapStringArrayFloat.getOrDefault)
@@ -294,6 +376,74 @@ class FeaturesProtoTestSpec extends AnyFlatSpec {
     assertMapArray(
       model.mapStringArrayString.getOrDefault,
       loadedModel.mapStringArrayString.getOrDefault)
+
+    // StructFeatures
+    assertAveragedPerceptron(model, loadedModel)
+    model.getStructClassifierDatasetEncoderParams.tags shouldBe loadedModel.getStructClassifierDatasetEncoderParams.tags
+    model.getStructDatasetEncoderParams shouldBe loadedModel.getStructDatasetEncoderParams
+    assertDependencyMaker(model, loadedModel)
+    assertStructDependencyPipe(model, loadedModel)
+    assertEntityRuler(model, loadedModel)
+    assertLinearChainCrfModel(model, loadedModel)
+    model.getStructMapIntFloat shouldBe loadedModel.getStructMapIntFloat
+    model.getStructMapStringFloat shouldBe loadedModel.getStructMapStringFloat
+    assertAhoCorasickAutomaton(model, loadedModel)
+    model.getStructOptionMapStringInt.get shouldBe loadedModel.getStructOptionMapStringInt.get
+    assertOptions(model, loadedModel)
+//    assert(model.getStructParameters == loadedModel.getStructParameters)
+//    assert(model.getStructRuleFactory == loadedModel.getStructRuleFactory)
+//    assert(model.getStructSearchTrie == loadedModel.getStructSearchTrie)
+//    assert(model.getStructString == loadedModel.getStructString)
+//    assert(model.getStructTokenizerModel == loadedModel.getStructTokenizerModel)
+  }
+
+  private def assertOptions(model: MockFeaturesModel, loadedModel: MockFeaturesModel): Unit = {
+    val data = model.getStructOptions
+    val dataLoaded = loadedModel.getStructOptions
+
+    assertSerializableFields(data, dataLoaded)
+  }
+
+  private def assertAhoCorasickAutomaton(
+      model: MockFeaturesModel,
+      loadedModel: MockFeaturesModel): Unit = {
+    val data = model.getStructOptionAhoCorasickAutomaton.get
+    val dataLoaded = loadedModel.getStructOptionAhoCorasickAutomaton.get
+
+    data.alphabet shouldBe dataLoaded.alphabet
+
+    val patternsField = classOf[AhoCorasickAutomaton].getDeclaredField("flattenEntityPatterns")
+    patternsField.setAccessible(true)
+    val patterns = patternsField.get(data).asInstanceOf[Array[FlattenEntityPattern]]
+    val patternsLoaded = patternsField.get(dataLoaded).asInstanceOf[Array[FlattenEntityPattern]]
+
+    patterns shouldBe patternsLoaded
+  }
+
+  private def assertLinearChainCrfModel(
+      model: MockFeaturesModel,
+      loadedModel: MockFeaturesModel) = {
+    val data = model.getStructLinearChainCrfModel
+    val loadedData = loadedModel.getStructLinearChainCrfModel
+    data.weights shouldBe loadedData.weights
+    data.weights shouldBe loadedData.weights
+
+    val metadata: DatasetMetadata = data.metadata
+    val loadedMetadata = loadedData.metadata
+
+    metadata.labels shouldBe loadedMetadata.labels
+    metadata.attrs shouldBe loadedMetadata.attrs
+    metadata.attrFeatures shouldBe loadedMetadata.attrFeatures
+    metadata.transitions shouldBe loadedMetadata.transitions
+    metadata.featuresStat shouldBe loadedMetadata.featuresStat
+  }
+
+  private def assertEntityRuler(model: MockFeaturesModel, loadedModel: MockFeaturesModel) = {
+    val data = model.getStructEntityRulerFeatures
+    val loadedData = loadedModel.getStructEntityRulerFeatures
+
+    data.patterns shouldBe loadedData.patterns
+    data.regexPatterns shouldBe loadedData.regexPatterns
   }
 
 }

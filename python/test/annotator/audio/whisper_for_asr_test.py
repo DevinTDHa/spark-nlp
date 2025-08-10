@@ -35,7 +35,7 @@ class WhisperTestSetUp(unittest.TestCase):
 
         # Edit Manually
         model_path = "exported_onnx/openai/whisper-tiny"
-        self.speech_to_text = WhisperForCTC \
+        self.speech_to_text = WhisperForASR \
             .loadSavedModel(model_path, SparkSessionForTest.spark) \
             .setInputCols("audio_assembler") \
             .setOutputCol("text")
@@ -46,7 +46,7 @@ class WhisperTestSetUp(unittest.TestCase):
 
 
 @pytest.mark.slow
-class WhisperForCTCTestSpec(WhisperTestSetUp, unittest.TestCase):
+class WhisperForASRTestSpec(WhisperTestSetUp, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
@@ -60,7 +60,7 @@ class WhisperForCTCTestSpec(WhisperTestSetUp, unittest.TestCase):
 
 
 @pytest.mark.slow
-class LightWhisperForCTCOneAudioTestSpec(WhisperTestSetUp, unittest.TestCase):
+class LightWhisperForASROneAudioTestSpec(WhisperTestSetUp, unittest.TestCase):
     def setUp(self):
         super().setUp()
         audio_path = os.getcwd() + "/../src/test/resources/audio/csv/audio_floats.csv"
@@ -83,7 +83,7 @@ class LightWhisperForCTCOneAudioTestSpec(WhisperTestSetUp, unittest.TestCase):
 
 
 @pytest.mark.slow
-class LightWhisperForCTCTestSpec(WhisperTestSetUp, unittest.TestCase):
+class LightWhisperForASRTestSpec(WhisperTestSetUp, unittest.TestCase):
     def setUp(self):
         super().setUp()
         audio_path = os.getcwd() + "/../src/test/resources/audio/csv/audio_floats.csv"
@@ -107,7 +107,7 @@ class LightWhisperForCTCTestSpec(WhisperTestSetUp, unittest.TestCase):
 
 
 @pytest.mark.slow
-class WhisperForCTCLangTaskTestSpec(WhisperTestSetUp, unittest.TestCase):
+class WhisperForASRLangTaskTestSpec(WhisperTestSetUp, unittest.TestCase):
     def setUp(self):
         super().setUp()
         audio_path = os.getcwd() + "/../src/test/resources/audio/txt/librispeech_asr_0.txt"

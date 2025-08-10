@@ -46,10 +46,7 @@ import org.apache.spark.sql.SparkSession
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 
-/** Whisper Model with a language modeling head on top for Connectionist Temporal Classification
-  * (CTC).
-  *
-  * Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of
+/** Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of
   * multilingual and multitask supervised data collected from the web. It transcribe in multiple
   * languages, as well as translate from those languages into English.
   *
@@ -63,7 +60,7 @@ import org.json4s.jackson.JsonMethods._
   *
   * Pretrained models can be loaded with `pretrained` of the companion object:
   * {{{
-  * val speechToText = WhisperForCTC.pretrained()
+  * val speechToText = WhisperForASR.pretrained()
   *   .setInputCols("audio_assembler")
   *   .setOutputCol("text")
   * }}}
@@ -74,7 +71,7 @@ import org.json4s.jackson.JsonMethods._
   * To see which models are compatible and how to import them see
   * [[https://github.com/JohnSnowLabs/spark-nlp/discussions/5669]] and to see more extended
   * examples, see
-  * [[https://github.com/JohnSnowLabs/spark-nlp/blob/master/src/test/scala/com/johnsnowlabs/nlp/annotators/audio/WhisperForCTCTest.scala WhisperForCTCTestSpec]].
+  * [[https://github.com/JohnSnowLabs/spark-nlp/blob/master/src/test/scala/com/johnsnowlabs/nlp/annotators/audio/WhisperForASRTest.scala WhisperForASRTestSpec]].
   *
   * '''References:'''
   *
@@ -96,14 +93,14 @@ import org.json4s.jackson.JsonMethods._
   * import spark.implicits._
   * import com.johnsnowlabs.nlp.base._
   * import com.johnsnowlabs.nlp.annotators._
-  * import com.johnsnowlabs.nlp.annotators.audio.WhisperForCTC
+  * import com.johnsnowlabs.nlp.annotators.audio.WhisperForASR
   * import org.apache.spark.ml.Pipeline
   *
   * val audioAssembler: AudioAssembler = new AudioAssembler()
   *   .setInputCol("audio_content")
   *   .setOutputCol("audio_assembler")
   *
-  * val speechToText: WhisperForCTC = WhisperForCTC
+  * val speechToText: WhisperForASR = WhisperForASR
   *   .pretrained()
   *   .setInputCols("audio_assembler")
   *   .setOutputCol("text")
@@ -149,9 +146,9 @@ import org.json4s.jackson.JsonMethods._
   *   A list of (hyper-)parameter keys this annotator can take. Users can set and get the
   *   parameter values through setters and getters, respectively.
   */
-class WhisperForCTC(override val uid: String)
-    extends AnnotatorModel[WhisperForCTC]
-    with HasBatchedAnnotateAudio[WhisperForCTC]
+class WhisperForASR(override val uid: String)
+    extends AnnotatorModel[WhisperForASR]
+    with HasBatchedAnnotateAudio[WhisperForASR]
     with HasAudioFeatureProperties
     with WriteTensorflowModel
     with WriteOpenvinoModel
@@ -166,7 +163,7 @@ class WhisperForCTC(override val uid: String)
   /** Annotator reference id. Used to identify elements in metadata or to refer to this annotator
     * type
     */
-  def this() = this(Identifiable.randomUID("WhisperForCTC"))
+  def this() = this(Identifiable.randomUID("WhisperForASR"))
 
   /** Optional language to set for the transcription. The imported model needs to support multiple
     * languages.
@@ -357,8 +354,8 @@ class WhisperForCTC(override val uid: String)
           path,
           spark,
           getModelIfNotSet.tensorflowWrapper.get,
-          WhisperForCTC.suffix,
-          WhisperForCTC.tfFile,
+          WhisperForASR.suffix,
+          WhisperForASR.tfFile,
           configProtoBytes = getConfigProtoBytes,
           savedSignatures = getSignatures)
       case ONNX.name =>
@@ -370,24 +367,24 @@ class WhisperForCTC(override val uid: String)
             (wrappers.encoder, "encoder_model"),
             (wrappers.decoder, "decoder_model"),
             (wrappers.decoderWithPast, "decoder_with_past_model")),
-          WhisperForCTC.suffix)
+          WhisperForASR.suffix)
       case Openvino.name =>
         val wrappers = getModelIfNotSet.openvinoWrapper
         writeOpenvinoModels(
           path,
           spark,
           Seq((wrappers.get.encoder, "openvino_encoder_model.xml")),
-          WhisperForCTC.suffix)
+          WhisperForASR.suffix)
         writeOpenvinoModels(
           path,
           spark,
           Seq((wrappers.get.decoder, "openvino_decoder_model.xml")),
-          WhisperForCTC.suffix)
+          WhisperForASR.suffix)
         writeOpenvinoModels(
           path,
           spark,
           Seq((wrappers.get.decoderWithPast, "openvino_decoder_with_past_model.xml")),
-          WhisperForCTC.suffix)
+          WhisperForASR.suffix)
     }
 
   }
@@ -425,40 +422,40 @@ class WhisperForCTC(override val uid: String)
 
 }
 
-trait ReadablePretrainedWhisperForCTCModel
-    extends ParamsAndFeaturesReadable[WhisperForCTC]
-    with HasPretrained[WhisperForCTC] {
+trait ReadablePretrainedWhisperForASRModel
+    extends ParamsAndFeaturesReadable[WhisperForASR]
+    with HasPretrained[WhisperForASR] {
   override val defaultModelName: Some[String] = Some("asr_whisper_tiny_opt")
   override val defaultLang: String = "xx"
 
   /** Java compliant-overrides */
-  override def pretrained(): WhisperForCTC = super.pretrained()
+  override def pretrained(): WhisperForASR = super.pretrained()
 
-  override def pretrained(name: String): WhisperForCTC = super.pretrained(name)
+  override def pretrained(name: String): WhisperForASR = super.pretrained(name)
 
-  override def pretrained(name: String, lang: String): WhisperForCTC =
+  override def pretrained(name: String, lang: String): WhisperForASR =
     super.pretrained(name, lang)
 
-  override def pretrained(name: String, lang: String, remoteLoc: String): WhisperForCTC =
+  override def pretrained(name: String, lang: String, remoteLoc: String): WhisperForASR =
     super.pretrained(name, lang, remoteLoc)
 }
 
-trait ReadWhisperForCTCDLModel
+trait ReadWhisperForASRDLModel
     extends ReadTensorflowModel
     with ReadOnnxModel
     with ReadOpenvinoModel {
-  this: ParamsAndFeaturesReadable[WhisperForCTC] =>
+  this: ParamsAndFeaturesReadable[WhisperForASR] =>
 
-  override val tfFile: String = "whisper_ctc_tensorflow"
-  override val onnxFile: String = "whisper_ctc_onnx"
-  override val openvinoFile: String = "whisper_ctc_openvino"
-  val suffix: String = "_whisper_ctc"
+  override val tfFile: String = "whisper_asr_tensorflow"
+  override val onnxFile: String = "whisper_asr_onnx"
+  override val openvinoFile: String = "whisper_asr_openvino"
+  val suffix: String = "_whisper_asr"
 
   private def checkVersion(spark: SparkSession): Unit = {
     val version = Version.parse(spark.version).toFloat
-    require(version >= 3.4, "WhisperForCTC requires Spark versions 3.4 and up.")
+    require(version >= 3.4, "WhisperForASR requires Spark versions 3.4 and up.")
   }
-  def readModel(instance: WhisperForCTC, path: String, spark: SparkSession): Unit = {
+  def readModel(instance: WhisperForASR, path: String, spark: SparkSession): Unit = {
     checkVersion(spark)
 
     instance.getEngine match {
@@ -466,7 +463,7 @@ trait ReadWhisperForCTCDLModel
         val tfWrapper = readTensorflowModel(
           path,
           spark,
-          WhisperForCTC.suffix,
+          WhisperForASR.suffix,
           savedSignatures = instance.getSignatures)
         instance.setModelIfNotSet(spark, Some(tfWrapper), None, None)
 
@@ -476,7 +473,7 @@ trait ReadWhisperForCTCDLModel
             path,
             spark,
             Seq("encoder_model", "decoder_model", "decoder_with_past_model"),
-            WhisperForCTC.suffix,
+            WhisperForASR.suffix,
             dataFilePostfix = ".onnx_data")
 
         val onnxWrappers = EncoderDecoderWrappers(
@@ -510,7 +507,7 @@ trait ReadWhisperForCTCDLModel
 
   addReader(readModel)
 
-  def loadSavedModel(modelPath: String, spark: SparkSession): WhisperForCTC = {
+  def loadSavedModel(modelPath: String, spark: SparkSession): WhisperForASR = {
     checkVersion(spark)
 
     implicit val formats: DefaultFormats.type = DefaultFormats // for json4s
@@ -582,7 +579,7 @@ trait ReadWhisperForCTCDLModel
     def arrayOrNone[T](array: Array[T]): Option[Array[T]] =
       if (array.nonEmpty) Some(array) else None
 
-    val annotatorModel = new WhisperForCTC()
+    val annotatorModel = new WhisperForASR()
       .setVocabulary(vocabMap)
       .setMaxOutputLength(maxOutputLength)
       .setDoNormalize(preprocessor.do_normalize)
@@ -700,7 +697,7 @@ trait ReadWhisperForCTCDLModel
   }
 }
 
-/** This is the companion object of [[WhisperForCTC]]. Please refer to that class for the
+/** This is the companion object of [[WhisperForASR]]. Please refer to that class for the
   * documentation.
   */
-object WhisperForCTC extends ReadablePretrainedWhisperForCTCModel with ReadWhisperForCTCDLModel
+object WhisperForASR extends ReadablePretrainedWhisperForASRModel with ReadWhisperForASRDLModel

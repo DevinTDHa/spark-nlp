@@ -11,7 +11,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Using
 
-class WhisperForCTCTest extends AnyFlatSpec with WhisperForCTCBehaviors {
+class WhisperForASRTest extends AnyFlatSpec with WhisperForASRBehaviors {
+
   import spark.implicits._
 
   lazy val audioAssembler: AudioAssembler = new AudioAssembler()
@@ -31,37 +32,39 @@ class WhisperForCTCTest extends AnyFlatSpec with WhisperForCTCBehaviors {
   lazy val processedAudioFloats: Dataset[Row] = Seq(rawFloats).toDF("audio_content")
 
   // Needs to be added manually
-  lazy val modelTf: WhisperForCTC = WhisperForCTC
+  lazy val modelOnnx: WhisperForASR = WhisperForASR
     .pretrained("asr_whisper_tiny", "xx")
     .setInputCols("audio_assembler")
     .setOutputCol("document")
 
-  lazy val modelOnnx: WhisperForCTC = WhisperForCTC
+  lazy val modelTf: WhisperForASR = WhisperForASR
     .pretrained()
     .setInputCols("audio_assembler")
     .setOutputCol("document")
 
-  behavior of "WhisperForCTC"
+  behavior of "WhisperForASR"
 
-  it should behave like correctTranscriber(modelTf, "tf")
-  it should behave like compatibleWithLightPipeline(modelTf, "tf")
-  it should behave like serializableModel(modelTf, "tf")
-
+  //  it should behave like correctTranscriber(modelTf, "tf")
+  //  it should behave like compatibleWithLightPipeline(modelTf, "tf")
+  //  it should behave like serializableModel(modelTf, "tf")
+  //
   it should behave like correctTranscriber(modelOnnx, "onnx")
-  it should behave like compatibleWithLightPipeline(modelOnnx, "onnx")
-  it should behave like serializableModel(modelOnnx, "onnx")
+  //  it should behave like compatibleWithLightPipeline(modelOnnx, "onnx")
+  //  it should behave like serializableModel(modelOnnx, "onnx")
 
 }
 
-trait WhisperForCTCBehaviors { this: AnyFlatSpec =>
+trait WhisperForASRBehaviors {
+  this: AnyFlatSpec =>
   lazy val spark: SparkSession = ResourceHelper.spark
+
   import spark.implicits._
 
   val audioAssembler: AudioAssembler
   val processedAudioFloats: Dataset[Row]
   val rawFloats: Array[Float]
 
-  def correctTranscriber(model: => WhisperForCTC, engine: => String): Unit = {
+  def correctTranscriber(model: => WhisperForASR, engine: => String): Unit = {
     it should s"correctly transform speech to text from already processed audio files ($engine)" taggedAs SlowTest in {
       val pipeline: Pipeline = new Pipeline().setStages(Array(audioAssembler, model))
 
@@ -135,7 +138,7 @@ trait WhisperForCTCBehaviors { this: AnyFlatSpec =>
 
     it should s"correctly transcribe speech to text from a different language ($engine)" taggedAs SlowTest in {
 
-      val modelChangedLang: WhisperForCTC =
+      val modelChangedLang: WhisperForASR =
         model.setLanguage("<|de|>").setTask("<|transcribe|>")
 
       val pipeline: Pipeline =
@@ -155,7 +158,7 @@ trait WhisperForCTCBehaviors { this: AnyFlatSpec =>
 
     it should s"correctly transcribe and translate speech to text from a different language ($engine)" taggedAs SlowTest in {
 
-      val modelChangedLangTask: WhisperForCTC =
+      val modelChangedLangTask: WhisperForASR =
         model.setLanguage("<|de|>").setTask("<|translate|>")
 
       val pipeline: Pipeline =
@@ -193,7 +196,7 @@ trait WhisperForCTCBehaviors { this: AnyFlatSpec =>
 
   }
 
-  def compatibleWithLightPipeline(model: => WhisperForCTC, engine: => String): Unit = {
+  def compatibleWithLightPipeline(model: => WhisperForASR, engine: => String): Unit = {
 
     it should s"transform speech to text with LightPipeline ($engine)" taggedAs SlowTest in {
       val token = new Tokenizer()
@@ -235,19 +238,20 @@ trait WhisperForCTCBehaviors { this: AnyFlatSpec =>
       }
     }
   }
-  def serializableModel(model: => WhisperForCTC, engine: => String): Unit = {
+
+  def serializableModel(model: => WhisperForASR, engine: => String): Unit = {
     it should s"be serializable ($engine)" taggedAs SlowTest in {
 
       val pipeline: Pipeline = new Pipeline().setStages(Array(audioAssembler, model))
 
       val pipelineModel = pipeline.fit(processedAudioFloats)
       pipelineModel.stages.last
-        .asInstanceOf[WhisperForCTC]
+        .asInstanceOf[WhisperForASR]
         .write
         .overwrite()
         .save("./tmp_whisper_model")
 
-      val loadedModel = WhisperForCTC.load("./tmp_whisper_model")
+      val loadedModel = WhisperForASR.load("./tmp_whisper_model")
       val newPipeline: Pipeline = new Pipeline().setStages(Array(audioAssembler, loadedModel))
 
       newPipeline

@@ -12,19 +12,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Contains classes concerning WhisperForCTC."""
+"""Contains classes concerning WhisperForASR."""
 
 from sparknlp.common import *
 
 
-class WhisperForCTC(AnnotatorModel,
+class WhisperForASR(AnnotatorModel,
                     HasBatchedAnnotateAudio,
                     HasAudioFeatureProperties,
                     HasEngine, HasGeneratorProperties):
-    """Whisper Model with a language modeling head on top for Connectionist Temporal Classification
-    (CTC).
-
-    Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of
+    """Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of
     multilingual and multitask supervised data collected from the web. It transcribe in multiple
     languages, as well as translate from those languages into English.
 
@@ -40,7 +37,7 @@ class WhisperForCTC(AnnotatorModel,
 
     .. code-block:: python
 
-        speechToText = WhisperForCTC.pretrained() \\
+        speechToText = WhisperForASR.pretrained() \\
             .setInputCols(["audio_assembler"]) \\
             .setOutputCol("text")
 
@@ -52,7 +49,7 @@ class WhisperForCTC(AnnotatorModel,
     To see which models are compatible and how to import them see
     https://github.com/JohnSnowLabs/spark-nlp/discussions/5669 and to see more extended
     examples, see
-    `WhisperForCTCTestSpec <https://github.com/JohnSnowLabs/spark-nlp/blob/master/src/test/scala/com/johnsnowlabs/nlp/annotators/audio/WhisperForCTCTest.scala>`__.
+    `WhisperForASRTestSpec <https://github.com/JohnSnowLabs/spark-nlp/blob/master/src/test/scala/com/johnsnowlabs/nlp/annotators/audio/WhisperForASRTest.scala>`__.
 
     **References:**
 
@@ -113,7 +110,7 @@ class WhisperForCTC(AnnotatorModel,
     >>> audioAssembler = AudioAssembler() \\
     ...     .setInputCol("audio_content") \\
     ...     .setOutputCol("audio_assembler")
-    >>> speechToText = WhisperForCTC.pretrained() \\
+    >>> speechToText = WhisperForASR.pretrained() \\
     ...     .setInputCols(["audio_assembler"]) \\
     ...     .setOutputCol("text")
     >>> pipeline = Pipeline().setStages([audioAssembler, speechToText])
@@ -126,7 +123,7 @@ class WhisperForCTC(AnnotatorModel,
     |[ Mr. Quilter is the apostle of the middle classes and we are glad to welcome his gospel.]|
     +------------------------------------------------------------------------------------------+
     """
-    name = "WhisperForCTC"
+    name = "WhisperForASR"
 
     inputAnnotatorTypes = [AnnotatorType.AUDIO]
 
@@ -186,9 +183,9 @@ class WhisperForCTC(AnnotatorModel,
         return self._call_java("setTask", value)
 
     @keyword_only
-    def __init__(self, classname="com.johnsnowlabs.nlp.annotators.audio.WhisperForCTC",
+    def __init__(self, classname="com.johnsnowlabs.nlp.annotators.audio.WhisperForASR",
                  java_model=None):
-        super(WhisperForCTC, self).__init__(
+        super(WhisperForASR, self).__init__(
             classname=classname,
             java_model=java_model
         )
@@ -220,12 +217,12 @@ class WhisperForCTC(AnnotatorModel,
 
         Returns
         -------
-        WhisperForCTC
+        WhisperForASR
             The restored model
         """
-        from sparknlp.internal import _WhisperForCTC
-        jModel = _WhisperForCTC(folder, spark_session._jsparkSession)._java_obj
-        return WhisperForCTC(java_model=jModel)
+        from sparknlp.internal import _WhisperForASR
+        jModel = _WhisperForASR(folder, spark_session._jsparkSession)._java_obj
+        return WhisperForASR(java_model=jModel)
 
     @staticmethod
     def pretrained(name="asr_whisper_tiny_opt", lang="xx", remote_loc=None):
@@ -244,8 +241,8 @@ class WhisperForCTC(AnnotatorModel,
 
         Returns
         -------
-        WhisperForCTC
+        WhisperForASR
             The restored model
         """
         from sparknlp.pretrained import ResourceDownloader
-        return ResourceDownloader.downloadModel(WhisperForCTC, name, lang, remote_loc)
+        return ResourceDownloader.downloadModel(WhisperForASR, name, lang, remote_loc)

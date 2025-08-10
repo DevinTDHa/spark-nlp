@@ -191,15 +191,18 @@ def start(gpu=False,
         if cluster_tmp_dir != '':
             builder.config("spark.jsl.settings.storage.cluster_tmp_dir", cluster_tmp_dir)
 
-        if params.get("spark.jars.packages") is None:
-            builder.config("spark.jars.packages", spark_jars_packages)
+        # FIXME: Temporary fix
+#         print("DHA: loading jar from /home/ducha/Workspace/tmp/sparknlp.jar")
+        builder.config("spark.jars", "/home/ducha/Workspace/tmp/sparknlp.jar")
+        # if params.get("spark.jars.packages") is None:
+        #     builder.config("spark.jars.packages", spark_jars_packages)
 
-        for key, value in params.items():
-            if key == "spark.jars.packages":
-                packages = spark_jars_packages + "," + value
-                builder.config(key, packages)
-            else:
-                builder.config(key, value)
+        # for key, value in params.items():
+        #     if key == "spark.jars.packages":
+        #         packages = spark_jars_packages + "," + value
+        #         builder.config(key, packages)
+        #     else:
+        #         builder.config(key, value)
 
         return builder.getOrCreate()
 

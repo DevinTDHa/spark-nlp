@@ -25,7 +25,7 @@ def create_pipeline(model):
         .setInputCol("audio_content") \
         .setOutputCol("audio_assembler")
 
-    speech_to_text = WhisperForCTC \
+    speech_to_text = WhisperForASR \
         .pretrained(model)\
         .setInputCols("audio_assembler") \
         .setOutputCol("text")
@@ -85,7 +85,7 @@ model = st.sidebar.selectbox("Choose the pretrained model", ['asr_whisper_base',
 
 # # Let's add the colab link for the notebook.
 
-link = """<a href="https://github.com/JohnSnowLabs/spark-nlp/blob/master/examples/python/annotation/audio/whisper/Automatic_Speech_Recognition_Whisper_(WhisperForCTC).ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" style="zoom: 1.3" alt="Open In Colab"/></a>"""
+link = """<a href="https://github.com/JohnSnowLabs/spark-nlp/blob/master/examples/python/annotation/audio/whisper/Automatic_Speech_Recognition_Whisper_(WhisperForASR).ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" style="zoom: 1.3" alt="Open In Colab"/></a>"""
 st.sidebar.title('')
 st.sidebar.markdown('Reference notebook:')
 st.sidebar.markdown(link, unsafe_allow_html=True)

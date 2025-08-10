@@ -934,10 +934,10 @@ class _HubertForCTC(ExtendedJavaWrapper):
         )
 
 
-class _WhisperForCTC(ExtendedJavaWrapper):
+class _WhisperForASR(ExtendedJavaWrapper):
     def __init__(self, path, jspark):
-        super(_WhisperForCTC, self).__init__(
-            "com.johnsnowlabs.nlp.annotators.audio.WhisperForCTC.loadSavedModel",
+        super(_WhisperForASR, self).__init__(
+            "com.johnsnowlabs.nlp.annotators.audio.WhisperForASR.loadSavedModel",
             path,
             jspark,
         )

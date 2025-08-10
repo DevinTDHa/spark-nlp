@@ -678,10 +678,10 @@ package object annotator {
 
   object HubertForCTC extends ReadablePretrainedHubertForAudioModel with ReadHubertForAudioDLModel
 
-  type WhisperForCTC =
-    com.johnsnowlabs.nlp.annotators.audio.WhisperForCTC
+  type WhisperForASR =
+    com.johnsnowlabs.nlp.annotators.audio.WhisperForASR
 
-  object WhisperForCTC extends ReadablePretrainedWhisperForCTCModel with ReadWhisperForCTCDLModel
+  object WhisperForASR extends ReadablePretrainedWhisperForASRModel with ReadWhisperForASRDLModel
 
   type ZeroShotNerModel =
     com.johnsnowlabs.nlp.annotators.ner.dl.ZeroShotNerModel

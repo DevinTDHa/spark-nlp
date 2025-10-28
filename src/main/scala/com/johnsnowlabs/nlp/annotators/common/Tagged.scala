@@ -205,14 +205,13 @@ object NerTagged extends Tagged[NerTaggedSentence] {
       batchSize: Int): Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] = {
 
     new Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] {
-
       import com.johnsnowlabs.nlp.annotators.common.DatasetHelpers._
 
       // Send batches, don't collect(), only keeping a single batch in memory anytime
       val it: util.Iterator[Row] = dataset
         .select(labelColumn, sentenceCols: _*)
         .randomize // to improve training
-        .toLocalIterator()
+        .toLocalIterator() // Uses as much memory as the largest partition, potentially all data if not careful
 
       // create a batch
       override def next(): Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)] = {

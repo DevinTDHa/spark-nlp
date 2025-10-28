@@ -34,6 +34,7 @@ import org.apache.spark.ml.param._
 import org.apache.spark.ml.util.{DefaultParamsReadable, Identifiable}
 import org.apache.spark.sql.types.{Metadata, StructField}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
+import org.slf4j.LoggerFactory
 import org.tensorflow.Graph
 import org.tensorflow.proto.framework.GraphDef
 
@@ -475,24 +476,30 @@ class NerDLApproach(override val uid: String)
   override def train(
       dataset: Dataset[_],
       recursivePipeline: Option[PipelineModel]): NerDLModel = {
-
     require(
       $(validationSplit) <= 1f | $(validationSplit) >= 0f,
       "The validationSplit must be between 0f and 1f")
 
-    val train = dataset.toDF()
-
-    val test = if (!isDefined(testDataset)) {
-      train.limit(0) // keep the schema only
-    } else {
-      ResourceHelper.readSparkDataFrame($(testDataset))
-    }
-
     val embeddingsRef =
       HasStorageRef.getStorageRefFromInput(dataset, $(inputCols), AnnotatorType.WORD_EMBEDDINGS)
 
-    val Array(validSplit, trainSplit) =
-      train.randomSplit(Array($(validationSplit), 1.0f - $(validationSplit)))
+    // Get the data splits
+    val (trainSplit: Dataset[Row], validSplit: Dataset[Row], test: Dataset[Row]) = {
+      def cacheIfNeeded(ds: Dataset[Row]): Dataset[Row] =
+        if (getEnableMemoryOptimizer && getMaxEpochs > 1) ds.cache() else ds
+
+      val train = dataset.toDF()
+      val (validSplit, trainSplit) =
+        train.randomSplit(Array($(validationSplit), 1.0f - $(validationSplit))) match {
+          case Array(validSplit, trainSplit) => (validSplit, trainSplit)
+        }
+
+      val test =
+        if (!isDefined(testDataset)) train.limit(0) // keep the schema only
+        else ResourceHelper.readSparkDataFrame($(testDataset))
+
+      (cacheIfNeeded(trainSplit), cacheIfNeeded(validSplit), cacheIfNeeded(test))
+    }
 
     val trainIteratorFunc = NerDLApproach.getIteratorFunc(
       trainSplit,
@@ -515,7 +522,11 @@ class NerDLApproach(override val uid: String)
       batchSize = $(batchSize),
       enableMemoryOptimizer = $(enableMemoryOptimizer))
 
-    val (labels: mutable.Set[String], chars: mutable.Set[Char], embeddingsDim: Int, dsLen: Long) =
+    val (
+      labels: mutable.Set[AnnotatorType],
+      chars: mutable.Set[Char],
+      embeddingsDim: Int,
+      dsLen: Long) =
       NerDLApproach.getDataSetParamsFromMetadata(trainSplit, $(labelColumn)) match {
         case Some(value) => value
         case None => // Legacy way of getting dataset params
@@ -595,8 +606,10 @@ class NerDLApproach(override val uid: String)
     if (get(configProtoBytes).isDefined)
       model.setConfigProtoBytes($(configProtoBytes))
 
+    trainSplit.unpersist()
+    validSplit.unpersist()
+    test.unpersist()
     model
-
   }
 }
 
@@ -705,6 +718,7 @@ trait WithGraphResolver {
   * documentation.
   */
 object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraphResolver {
+  protected val logger = LoggerFactory.getLogger(this.getClass)
 
   def getIteratorFunc(
       dataset: Dataset[Row],
@@ -766,6 +780,12 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
     (labels.size, embeddingsDim, chars.size + 1)
   }
 
+  /** Try to get dataset params from metadata by fitting [[NerDLGraphChecker]] and written by
+    * [[NerDLGraphCheckerModel]].
+    *
+    * @return
+    *   Some(labels, chars, embeddingsDim, dsLen) if metadata found, None otherwise
+    */
   def getDataSetParamsFromMetadata(
       dataset: Dataset[_],
       labelColumn: String): Option[(mutable.Set[String], mutable.Set[Char], Int, Long)] = {
@@ -779,7 +799,7 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
       labelField.metadata.getMetadata(NerDLGraphCheckerModel.graphParamsMetadataKey)
     } match {
       case Success(value) => Some(value)
-      case Failure(_) => None
+      case Failure(_) => None // no metadata found, NerDLGraphChecker was not run
     }
 
     metaGraphParams match {
@@ -788,13 +808,16 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
           val labels = metadata.getStringArray(NerDLGraphCheckerModel.labelsKey)
           val chars = metadata.getStringArray(NerDLGraphCheckerModel.charsKey).map(_.head)
           val embeddingsDim = metadata.getLong(NerDLGraphCheckerModel.embeddingsDimKey).toInt
+          logger.info(
+            s"NerDLApproach: Found graph params in label column metadata:" +
+              s" labels=${labels.length}, chars=${chars.length}, embeddingsDim=$embeddingsDim")
           val dsLen = dataset.count()
 
           Some(
             (mutable.Set[String](labels: _*), mutable.Set[Char](chars: _*), embeddingsDim, dsLen))
         } catch {
           case _: NoSuchElementException =>
-            println(
+            logger.warn(
               s"$labelColumn metadata is missing required fields filled by NerDLGraphChecker" +
                 s" (key: ${NerDLGraphCheckerModel.graphParamsMetadataKey}." +
                 s" Falling back to legacy method of for dataset params.")

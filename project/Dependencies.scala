@@ -107,10 +107,11 @@ object Dependencies {
   val junit = "junit" % "junit" % junitVersion % Test
 
   val tensorflowVersion = "0.4.4"
-  val tensorflowGPU = "com.johnsnowlabs.nlp" %% "tensorflow-gpu" % tensorflowVersion
-  val tensorflowCPU = "com.johnsnowlabs.nlp" %% "tensorflow-cpu" % tensorflowVersion
-  val tensorflowM1 = "com.johnsnowlabs.nlp" %% "tensorflow-m1" % tensorflowVersion
-  val tensorflowLinuxAarch64 = "com.johnsnowlabs.nlp" %% "tensorflow-aarch64" % tensorflowVersion
+  val tensorflowGPU = "com.johnsnowlabs.nlp" % "tensorflow-gpu_2.12" % tensorflowVersion
+  val tensorflowCPU = "com.johnsnowlabs.nlp" % "tensorflow-cpu_2.12" % tensorflowVersion
+  val tensorflowM1 = "com.johnsnowlabs.nlp" % "tensorflow-m1_2.12" % tensorflowVersion
+  val tensorflowLinuxAarch64 =
+    "com.johnsnowlabs.nlp" %% "tensorflow-aarch64_2.12" % tensorflowVersion
 
   val onnxRuntimeVersion = "1.19.2"
   val onnxCPU = "com.microsoft.onnxruntime" % "onnxruntime" % onnxRuntimeVersion

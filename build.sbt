@@ -193,26 +193,26 @@ val onnxDependencies: Seq[sbt.ModuleID] =
   else
     Seq(onnxCPU)
 
-val llamaCppDependencies = Seq.empty
-//  if (is_gpu.equals("true"))
-//    Seq(llamaCppGPU)
-//  else if (is_silicon.equals("true"))
-//    Seq(llamaCppSilicon)
-//  else if (is_aarch64.equals("true"))
-//    Seq(llamaCppAarch64)
-//  else
-//    Seq(llamaCppCPU)
+val llamaCppDependencies =
+  if (is_gpu.equals("true"))
+    Seq(llamaCppGPU)
+  else if (is_silicon.equals("true"))
+    Seq(llamaCppSilicon)
+  else if (is_aarch64.equals("true"))
+    Seq(llamaCppAarch64)
+  else
+    Seq(llamaCppCPU)
 
-val openVinoDependencies: Seq[sbt.ModuleID] = Seq.empty
-//  if (is_gpu.equals("true"))
-//    Seq(openVinoGPU)
-//  else
-////  else if (is_silicon.equals("true"))
-////    Seq(openVinoCPU)
-////  else if (is_aarch64.equals("true"))
-////    Seq(openVinoCPU)
-////  else
+val openVinoDependencies: Seq[sbt.ModuleID] =
+  if (is_gpu.equals("true"))
+    Seq(openVinoGPU)
+  else
+//  else if (is_silicon.equals("true"))
 //    Seq(openVinoCPU)
+//  else if (is_aarch64.equals("true"))
+//    Seq(openVinoCPU)
+//  else
+    Seq(openVinoCPU)
 
 lazy val mavenProps = settingKey[Unit]("workaround for Maven properties")
 

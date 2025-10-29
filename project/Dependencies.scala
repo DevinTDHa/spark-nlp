@@ -117,8 +117,8 @@ object Dependencies {
   val onnxGPU = "com.microsoft.onnxruntime" % "onnxruntime_gpu" % onnxRuntimeVersion
 
   val openVinoRuntimeVersion = "0.1.0"
-  val openVinoCPU = "com.johnsnowlabs.nlp" %% "jsl-openvino-cpu" % openVinoRuntimeVersion
-  val openVinoGPU = "com.johnsnowlabs.nlp" %% "jsl-openvino-gpu" % openVinoRuntimeVersion
+  val openVinoCPU = "com.johnsnowlabs.nlp" % "jsl-openvino-cpu_2.12" % openVinoRuntimeVersion
+  val openVinoGPU = "com.johnsnowlabs.nlp" % "jsl-openvino-gpu_2.12" % openVinoRuntimeVersion
 
   val gcpStorageVersion = "2.20.1"
   val gcpStorage = "com.google.cloud" % "google-cloud-storage" % gcpStorageVersion
@@ -128,10 +128,10 @@ object Dependencies {
   val azureStorage = "com.azure" % "azure-storage-blob" % azureStorageVersion % Provided
 
   val llamaCppVersion = "0.1.4"
-  val llamaCppCPU = "com.johnsnowlabs.nlp" %% "jsl-llamacpp-cpu" % llamaCppVersion
-  val llamaCppGPU = "com.johnsnowlabs.nlp" %% "jsl-llamacpp-gpu" % llamaCppVersion
-  val llamaCppSilicon = "com.johnsnowlabs.nlp" %% "jsl-llamacpp-silicon" % llamaCppVersion
-  val llamaCppAarch64 = "com.johnsnowlabs.nlp" %% "jsl-llamacpp-aarch64" % llamaCppVersion
+  val llamaCppCPU = "com.johnsnowlabs.nlp" % "jsl-llamacpp-cpu_2.12" % llamaCppVersion
+  val llamaCppGPU = "com.johnsnowlabs.nlp" % "jsl-llamacpp-gpu_2.12" % llamaCppVersion
+  val llamaCppSilicon = "com.johnsnowlabs.nlp" % "jsl-llamacpp-silicon_2.12" % llamaCppVersion
+  val llamaCppAarch64 = "com.johnsnowlabs.nlp" % "jsl-llamacpp-aarch64_2.12" % llamaCppVersion
 
   val jsoupVersion = "1.18.2"
   val jsoup = "org.jsoup" % "jsoup" % jsoupVersion

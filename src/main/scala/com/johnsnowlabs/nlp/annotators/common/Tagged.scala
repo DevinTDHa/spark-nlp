@@ -24,6 +24,7 @@ import org.apache.spark.sql.{Dataset, Row}
 
 import java.util
 import scala.collection.Map
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 trait Tagged[T >: TaggedSentence <: TaggedSentence] extends Annotated[T] {
@@ -216,7 +217,7 @@ object NerTagged extends Tagged[NerTaggedSentence] {
       // create a batch
       override def next(): Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)] = {
         var count = 0
-        var thisBatch = Array.empty[(TextSentenceLabels, WordpieceEmbeddingsSentence)]
+        val thisBatch = new ArrayBuffer[(TextSentenceLabels, WordpieceEmbeddingsSentence)]
 
         while (it.hasNext && count < batchSize) {
           count += 1
@@ -229,9 +230,9 @@ object NerTagged extends Tagged[NerTaggedSentence] {
           val labels = getLabelsFromSentences(sentences, labelAnnotations)
           val thisOne = labels.zip(sentences)
 
-          thisBatch = thisBatch ++ thisOne
+          thisBatch ++= thisOne
         }
-        thisBatch
+        thisBatch.toArray
       }
 
       override def hasNext: Boolean = it.hasNext

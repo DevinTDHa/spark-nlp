@@ -32,13 +32,14 @@ import org.apache.commons.lang3.SystemUtils
 import org.apache.spark.ml.PipelineModel
 import org.apache.spark.ml.param._
 import org.apache.spark.ml.util.{DefaultParamsReadable, Identifiable}
+import org.apache.spark.sql.types.{Metadata, StructField}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.tensorflow.Graph
 import org.tensorflow.proto.framework.GraphDef
 
 import java.io.File
 import scala.collection.mutable
-import scala.util.Random
+import scala.util.{Failure, Random, Success, Try}
 
 /** This Named Entity recognition annotator allows to train generic NER model based on Neural
   * Networks.
@@ -514,8 +515,12 @@ class NerDLApproach(override val uid: String)
       batchSize = $(batchSize),
       enableMemoryOptimizer = $(enableMemoryOptimizer))
 
-    val (labels, chars, embeddingsDim, dsLen) =
-      NerDLApproach.getDataSetParams(trainIteratorFunc())
+    val (labels: mutable.Set[String], chars: mutable.Set[Char], embeddingsDim: Int, dsLen: Long) =
+      NerDLApproach.getDataSetParamsFromMetadata(trainSplit, $(labelColumn)) match {
+        case Some(value) => value
+        case None => // Legacy way of getting dataset params
+          NerDLApproach.getDataSetParams(trainIteratorFunc())
+      }
 
     val settings = DatasetEncoderParams(
       labels.toList,
@@ -759,5 +764,43 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
     val (labels, chars, embeddingsDim, _) = getDataSetParams(trainIteratorFunc())
 
     (labels.size, embeddingsDim, chars.size + 1)
+  }
+
+  def getDataSetParamsFromMetadata(
+      dataset: Dataset[_],
+      labelColumn: String): Option[(mutable.Set[String], mutable.Set[Char], Int, Long)] = {
+    val labelField: StructField = dataset.schema.fields.find(_.name == labelColumn) match {
+      case Some(value) => value
+      case None =>
+        throw new IllegalArgumentException(s"Label column $labelColumn not found in dataframe.")
+    }
+
+    val metaGraphParams: Option[Metadata] = Try {
+      labelField.metadata.getMetadata(NerDLGraphCheckerModel.graphParamsMetadataKey)
+    } match {
+      case Success(value) => Some(value)
+      case Failure(_) => None
+    }
+
+    metaGraphParams match {
+      case Some(metadata: Metadata) =>
+        try {
+          val labels = metadata.getStringArray(NerDLGraphCheckerModel.labelsKey)
+          val chars = metadata.getStringArray(NerDLGraphCheckerModel.charsKey).map(_.head)
+          val embeddingsDim = metadata.getLong(NerDLGraphCheckerModel.embeddingsDimKey).toInt
+          val dsLen = dataset.count()
+
+          Some(
+            (mutable.Set[String](labels: _*), mutable.Set[Char](chars: _*), embeddingsDim, dsLen))
+        } catch {
+          case _: NoSuchElementException =>
+            println(
+              s"$labelColumn metadata is missing required fields filled by NerDLGraphChecker" +
+                s" (key: ${NerDLGraphCheckerModel.graphParamsMetadataKey}." +
+                s" Falling back to legacy method of for dataset params.")
+            None
+        }
+      case None => None
+    }
   }
 }

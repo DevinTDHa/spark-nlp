@@ -113,7 +113,6 @@ class NerDLGraphCheckerTest(unittest.TestCase):
 
         loaded_pipeline_model.transform(self.dataset).show()
 
-    # TODO: try to solve for next release (only fails in python with spark 3.3)
     def test_determine_suitable_graph_before_training(self):
         embeddings_invalid, ner_graph_checker, ner = setup_annotators(
             self.dataset, embeddingDim=101

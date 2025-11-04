@@ -28,6 +28,9 @@ class NerDLGraphChecker(
     computations/training is done. This annotator is useful for custom training cases, where
     specialized graphs are needed.
 
+    This annotator will fill graph hyperparameters as metadata in the label column, which will be
+    available for NerDLApproach, saving computations.
+
     Important: This annotator should be used or positioned before any embedding or NerDLApproach
     annotators in the pipeline and will process the whole dataset to extract the required graph parameters.
 
@@ -240,10 +243,12 @@ class NerDLGraphCheckerModel(
             self.__class__._java_class_name = classname
             self._java_obj = self._new_java_obj(classname)
 
+    # Metadata keys for graph parameters
     graphParamsMetadataKey = "NerDLGraphCheckerParams"
     embeddingsDimKey = "embeddingsDim"
     labelsKey = "labels"
     charsKey = "chars"
+    dsLenKey = "dsLen"
 
     labelColumn = Param(
         Params._dummy(),
@@ -278,4 +283,11 @@ class NerDLGraphCheckerModel(
         "graphFolder",
         "Folder path that contain external graph files",
         typeConverter=TypeConverters.toString,
+    )
+
+    dsLen = Param(
+        Params._dummy(),
+        "dsLen",
+        "Length of the training dataset.",
+        typeConverter=TypeConverters.toInt,
     )

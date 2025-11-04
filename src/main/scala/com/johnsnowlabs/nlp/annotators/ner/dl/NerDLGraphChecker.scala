@@ -32,6 +32,9 @@ import scala.util.{Failure, Success, Try}
   * specialized graphs might not be available and we want to check before embeddings are
   * evaluated.
   *
+  * This annotator will fill graph hyperparameters as metadata in the label column, which will be
+  * available for NerDLApproach, saving computations.
+  *
   * Important: This annotator should be used or positioned before any embedding or NerDLApproach
   * annotators in the pipeline and will process the whole dataset to extract the required graph
   * parameters.
@@ -180,7 +183,7 @@ class NerDLGraphChecker(override val uid: String)
   protected def getGraphParamsDs(
       dataset: Dataset[_],
       inputCols: Array[String],
-      labelsCol: String): (Array[String], Array[String], Int) = {
+      labelsCol: String): (Array[String], Array[String], Int, Long) = {
     def getCol(annoType: String) = {
       dataset.schema.fields.find { field =>
         inputCols.contains(field.name) && field.metadata.getString("annotatorType") == annoType
@@ -214,14 +217,16 @@ class NerDLGraphChecker(override val uid: String)
 
     val embeddingsDim = getEmbeddingsDim
 
-    (labels, chars, embeddingsDim)
+    val dsLen = dataset.count()
+
+    (labels, chars, embeddingsDim, dsLen)
   }
 
   protected def searchForSuitableGraph(nLabels: Int, nChars: Int, embeddingsDim: Int): String =
     NerDLApproach.searchForSuitableGraph(nLabels, embeddingsDim, nChars + 1, getGraphFolder)
 
   override def fit(dataset: Dataset[_]): NerDLGraphCheckerModel = {
-    val (labels, chars, embeddingsDim) =
+    val (labels, chars, embeddingsDim, dsLen) =
       getGraphParamsDs(dataset, $(inputCols), $(labelColumn))
     val nLabels = labels.length
     val nChars = chars.length
@@ -248,6 +253,7 @@ class NerDLGraphChecker(override val uid: String)
       .setLabelColumn(getLabelColumn)
       .setEmbeddingsDim(embeddingsDim)
       .setLabels(labels)
+      .setDsLen(dsLen)
       .setChars(chars)
   }
 

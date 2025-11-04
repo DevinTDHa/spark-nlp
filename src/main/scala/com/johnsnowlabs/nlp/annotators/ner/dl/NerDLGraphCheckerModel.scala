@@ -18,7 +18,7 @@ package com.johnsnowlabs.nlp.annotators.ner.dl
 
 import com.johnsnowlabs.nlp._
 import org.apache.spark.ml.Model
-import org.apache.spark.ml.param.{IntParam, Param, ParamMap, StringArrayParam}
+import org.apache.spark.ml.param.{IntParam, LongParam, Param, ParamMap, StringArrayParam}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.types.{MetadataBuilder, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset}
@@ -85,6 +85,17 @@ class NerDLGraphCheckerModel(override val uid: String)
   /* @group getParam */
   def getChars: Array[String] = $(chars)
 
+  /** Number of training examples in the dataset
+    *
+    * @group param
+    */
+  val dsLen = new LongParam(this, "dsLen", "Length of the training dataset.")
+
+  /* @group setParam */
+  def setDsLen(value: Long): this.type = set(dsLen, value)
+  /* @group getParam */
+  def getDsLen: Long = $(dsLen)
+
   /** Folder path that contain external graph files
     *
     * @group param
@@ -114,6 +125,7 @@ class NerDLGraphCheckerModel(override val uid: String)
       .putLong(NerDLGraphCheckerModel.embeddingsDimKey, getEmbeddingsDim)
       .putStringArray(NerDLGraphCheckerModel.labelsKey, getLabels)
       .putStringArray(NerDLGraphCheckerModel.charsKey, getChars)
+      .putLong(NerDLGraphCheckerModel.dsLenKey, getDsLen)
       .build()
 
     val labelFieldMeta = new MetadataBuilder()
@@ -132,4 +144,5 @@ object NerDLGraphCheckerModel extends ParamsAndFeaturesReadable[NerDLGraphChecke
   def embeddingsDimKey: String = "embeddingsDim"
   def labelsKey: String = "labels"
   def charsKey: String = "chars"
+  def dsLenKey: String = "dsLen"
 }

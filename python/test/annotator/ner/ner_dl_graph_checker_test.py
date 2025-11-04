@@ -140,7 +140,9 @@ class NerDLGraphCheckerTest(unittest.TestCase):
                 .collect()
             )
 
-            return set(r[0] for r in labels), set(r[0] for r in chars)
+            dsLen = dataset.count()
+
+            return set(r[0] for r in labels), set(r[0] for r in chars), dsLen
 
         embeddings, ner_dl_graph_checker, _ = setup_annotators(self.dataset)
         pipeline = Pipeline(stages=[embeddings, ner_dl_graph_checker])
@@ -161,11 +163,13 @@ class NerDLGraphCheckerTest(unittest.TestCase):
         embeddings_dim = graph_params_meta[NerDLGraphCheckerModel.embeddingsDimKey]
         labels = set(graph_params_meta[NerDLGraphCheckerModel.labelsKey])
         chars = set("".join(graph_params_meta[NerDLGraphCheckerModel.charsKey]))
+        ds_len = graph_params_meta[NerDLGraphCheckerModel.dsLenKey]
 
         expected_embedding_dim = embeddings.getDimension()
         (
             expected_labels,
             expected_chars,
+            expected_dsLen,
         ) = get_expected_params(result, "token", "label")
 
         assert (
@@ -177,6 +181,9 @@ class NerDLGraphCheckerTest(unittest.TestCase):
         assert (
             chars == expected_chars
         ), "Extracted chars should match the dataset chars."
+        assert (
+            ds_len == expected_dsLen
+        ), "Extracted dataset length should match the dataset length."
 
 
 @pytest.mark.slow

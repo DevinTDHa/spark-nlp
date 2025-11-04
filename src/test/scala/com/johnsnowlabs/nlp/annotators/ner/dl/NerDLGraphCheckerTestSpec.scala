@@ -216,14 +216,18 @@ class NerDLGraphCheckerTestSpec extends AnyFlatSpec with BeforeAndAfterEach {
       graphParamsMeta.getStringArray(NerDLGraphCheckerModel.labelsKey).toSet
     val chars: Set[Char] =
       graphParamsMeta.getStringArray(NerDLGraphCheckerModel.charsKey).flatMap(_.toCharArray).toSet
+    val dsLen: Long = graphParamsMeta.getLong(NerDLGraphCheckerModel.dsLenKey)
 
-    val (expectedLabels, expectedChars, expectedEmbeddingDim, _) =
+    val (expectedLabels, expectedChars, expectedEmbeddingDim, expectedDsLen) =
       getExpectedParams(result, mockNer.getInputCols, nerDLGraphChecker.getLabelColumn)
+
+    println(s"Metadata: $embeddingsDim, labels: $labels, chars: $chars, dsLen: $dsLen")
 
     assert(
       embeddingsDim == expectedEmbeddingDim,
       "Extracted embeddings dim should match the embeddings model dimension.")
     assert(labels == expectedLabels, "Extracted labels should match the dataset labels.")
     assert(chars == expectedChars, "Extracted chars should match the dataset chars.")
+    assert(dsLen == expectedDsLen, "Extracted dataset length should match the dataset count.")
   }
 }

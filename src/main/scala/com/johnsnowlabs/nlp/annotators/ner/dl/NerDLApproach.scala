@@ -34,7 +34,7 @@ import org.apache.spark.ml.param._
 import org.apache.spark.ml.util.{DefaultParamsReadable, Identifiable}
 import org.apache.spark.sql.types.{Metadata, StructField}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import org.tensorflow.Graph
 import org.tensorflow.proto.framework.GraphDef
 
@@ -526,12 +526,18 @@ class NerDLApproach(override val uid: String)
       labels: mutable.Set[AnnotatorType],
       chars: mutable.Set[Char],
       embeddingsDim: Int,
-      dsLen: Long) =
+      dsLen: Long) = {
       NerDLApproach.getDataSetParamsFromMetadata(trainSplit, $(labelColumn)) match {
         case Some(value) => value
         case None => // Legacy way of getting dataset params
           NerDLApproach.getDataSetParams(trainIteratorFunc())
       }
+    }
+    val (trainDsLen: Long, valDsLen: Long) = {
+      val valLen = (dsLen * $(validationSplit)).toLong
+      val trainLen = dsLen - valLen
+      (trainLen, valLen)
+    }
 
     val settings = DatasetEncoderParams(
       labels.toList,
@@ -565,9 +571,9 @@ class NerDLApproach(override val uid: String)
         // start the iterator here once again
         val trainedTf = model.train(
           trainIteratorFunc(),
-          dsLen,
+          trainDsLen,
           validIteratorFunc(),
-          (dsLen * $(validationSplit)).toLong,
+          valDsLen,
           $(lr),
           $(po),
           $(dropout),
@@ -718,7 +724,7 @@ trait WithGraphResolver {
   * documentation.
   */
 object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraphResolver {
-  protected val logger = LoggerFactory.getLogger(this.getClass)
+  protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def getIteratorFunc(
       dataset: Dataset[Row],
@@ -808,10 +814,9 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
           val labels = metadata.getStringArray(NerDLGraphCheckerModel.labelsKey)
           val chars = metadata.getStringArray(NerDLGraphCheckerModel.charsKey).map(_.head)
           val embeddingsDim = metadata.getLong(NerDLGraphCheckerModel.embeddingsDimKey).toInt
-          logger.info(
-            s"NerDLApproach: Found graph params in label column metadata:" +
-              s" labels=${labels.length}, chars=${chars.length}, embeddingsDim=$embeddingsDim")
-          val dsLen = dataset.count()
+          val dsLen = metadata.getLong(NerDLGraphCheckerModel.dsLenKey)
+          logger.info(s"NerDLApproach: Found graph params in label column metadata:" +
+            s" labels=${labels.length}, chars=${chars.length}, embeddingsDim=$embeddingsDim, dsLen=$dsLen")
 
           Some(
             (mutable.Set[String](labels: _*), mutable.Set[Char](chars: _*), embeddingsDim, dsLen))

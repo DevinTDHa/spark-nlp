@@ -104,6 +104,9 @@ class Reader2Doc(override val uid: String)
       "joinString",
       "If outputAsDocument is true, specifies the string used to join elements into a single document.")
 
+  /** If outputAsDocument is true, specifies the string used to join elements into a single */
+  def setJoinString(value: String): this.type = set(joinString, value)
+
   setDefault(
     explodeDocs -> false,
     contentType -> "",
@@ -156,7 +159,8 @@ class Reader2Doc(override val uid: String)
       "xmlKeepTags" -> $(xmlKeepTags).toString,
       "onlyLeafNodes" -> $(onlyLeafNodes).toString,
       "titleThreshold" -> $(titleThreshold).toString,
-      "outputFormat" -> $(outputFormat))
+      "outputFormat" -> $(outputFormat),
+      "extractTagAttributes" -> $(extractTagAttributes).mkString(","))
     new Partition(params.asJava)
   }
 
@@ -229,7 +233,7 @@ class Reader2Doc(override val uid: String)
     partitions.flatMap { part =>
       val elementType = part.getAs[String]("elementType")
       if ($(excludeNonText) && isTableElement(part)) {
-        Seq.empty
+        None
       } else {
         val content = part.getAs[String]("content")
         val metadata = part.getAs[Map[String, String]]("metadata")

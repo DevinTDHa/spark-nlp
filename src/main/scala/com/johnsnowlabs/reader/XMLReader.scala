@@ -159,7 +159,7 @@ class XMLReader(
             val content = attributeContent + (if (isLeaf) textContent else "")
             if (content.nonEmpty) elements += HTMLElement(elementType, content, metadata)
           } else if (attributeContent.nonEmpty) // Only attributes as NARRATIVE_TEXT
-            elements += HTMLElement(ElementType.NARRATIVE_TEXT, attributeContent, metadata)
+            elements += HTMLElement(elementType, attributeContent, metadata)
 
           // Traverse children
           elem.child.foreach(traverse(_, Some(elementId)))

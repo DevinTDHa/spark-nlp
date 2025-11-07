@@ -491,4 +491,59 @@ class Reader2DocTest extends AnyFlatSpec with SparkSessionTest {
       "Expected to find attribute elements in the HTML content")
   }
 
+  it should "parse xml into a document" taggedAs FastTest in {
+    val reader2Doc = new Reader2Doc()
+      .setOutputCol("document")
+      .setContentPath(s"$xmlDirectory/test.xml")
+      .setContentType("application/xml")
+
+    val pipeline = new Pipeline().setStages(Array(reader2Doc))
+
+    val pipelineModel = pipeline.fit(emptyDataSet)
+    val resultDf = pipelineModel.transform(emptyDataSet)
+    val collected = resultDf.select("document.result").as[Array[String]].collect()
+
+    val text: String = collected.head.head
+    val expectedText =
+      """Harry Potter
+        |J K. Rowling
+        |2005
+        |29.99
+        |Learning XML
+        |Erik T. Ray
+        |2003
+        |39.95""".stripMargin
+    assert(text == expectedText)
+  }
+
+  it should "extract tag attributes from xml" taggedAs FastTest in {
+    val reader2Doc = new Reader2Doc()
+      .setOutputCol("document")
+      .setContentPath(s"$xmlDirectory/test.xml")
+      .setContentType("application/xml")
+      .setExtractTagAttributes(Array("category", "lang"))
+
+    val pipeline = new Pipeline().setStages(Array(reader2Doc))
+
+    val pipelineModel = pipeline.fit(emptyDataSet)
+    val resultDf = pipelineModel.transform(emptyDataSet)
+    val collected = resultDf.select("document.result").as[Array[String]].collect()
+
+    val text: String = collected.head.head
+    val expectedText =
+      """children
+        |en
+        |Harry Potter
+        |J K. Rowling
+        |2005
+        |29.99
+        |web
+        |en
+        |Learning XML
+        |Erik T. Ray
+        |2003
+        |39.95""".stripMargin
+
+    assert(text == expectedText)
+  }
 }

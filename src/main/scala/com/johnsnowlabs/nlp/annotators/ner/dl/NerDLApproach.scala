@@ -24,6 +24,7 @@ import com.johnsnowlabs.nlp.AnnotatorType.{DOCUMENT, NAMED_ENTITY, TOKEN, WORD_E
 import com.johnsnowlabs.nlp.annotators.common.{NerTagged, WordpieceEmbeddingsSentence}
 import com.johnsnowlabs.nlp.annotators.ner.{ModelMetrics, NerApproach, Verbose}
 import com.johnsnowlabs.nlp.annotators.param.EvaluationDLParams
+import com.johnsnowlabs.nlp.training.NerDLDataLoader
 import com.johnsnowlabs.nlp.util.io.{OutputHelper, ResourceHelper}
 import com.johnsnowlabs.nlp.{AnnotatorApproach, AnnotatorType, ParamsAndFeaturesWritable}
 import com.johnsnowlabs.storage.HasStorageRef
@@ -450,6 +451,14 @@ class NerDLApproach(override val uid: String)
 
   }
 
+  val prefetchBatches = new IntParam(
+    this,
+    "prefetchBatches",
+    "Number of batches to prefetch while training using memory optimizer. Has no effect if memory optimizer is disabled.")
+
+  def getPrefetchBatches: Int = $(this.prefetchBatches)
+  def setPrefetchBatches(value: Int): this.type = set(this.prefetchBatches, value)
+
   setDefault(
     minEpochs -> 0,
     maxEpochs -> 70,
@@ -462,7 +471,8 @@ class NerDLApproach(override val uid: String)
     includeAllConfidenceScores -> false,
     enableMemoryOptimizer -> false,
     useBestModel -> false,
-    bestModelMetric -> ModelMetrics.loss)
+    bestModelMetric -> ModelMetrics.loss,
+    prefetchBatches -> 0)
 
   override val verboseLevel: Verbose.Level = Verbose($(verbose))
 
@@ -485,6 +495,24 @@ class NerDLApproach(override val uid: String)
       $(validationSplit) <= 1f | $(validationSplit) >= 0f,
       "The validationSplit must be between 0f and 1f")
 
+    def getIteratorFunc(split: Dataset[Row]) = if (!getEnableMemoryOptimizer) {
+      // No memory optimizer
+      NerDLApproach.getIteratorFunc(
+        split,
+        inputColumns = getInputCols,
+        labelColumn = $(labelColumn),
+        batchSize = $(batchSize),
+        enableMemoryOptimizer = $(enableMemoryOptimizer))
+    } else {
+      logger.info(s"Using memory optimizer with $prefetchBatches prefetch batches.")
+      NerDLApproach.getIteratorFunc(
+        split,
+        inputColumns = getInputCols,
+        labelColumn = $(labelColumn),
+        batchSize = $(batchSize),
+        prefetchBatches = getPrefetchBatches)
+    }
+
     val embeddingsRef =
       HasStorageRef.getStorageRefFromInput(dataset, $(inputCols), AnnotatorType.WORD_EMBEDDINGS)
 
@@ -506,26 +534,10 @@ class NerDLApproach(override val uid: String)
       (cacheIfNeeded(trainSplit), cacheIfNeeded(validSplit), cacheIfNeeded(test))
     }
 
-    val trainIteratorFunc = NerDLApproach.getIteratorFunc(
-      trainSplit,
-      inputColumns = getInputCols,
-      labelColumn = $(labelColumn),
-      batchSize = $(batchSize),
-      enableMemoryOptimizer = $(enableMemoryOptimizer))
-
-    val validIteratorFunc = NerDLApproach.getIteratorFunc(
-      validSplit,
-      inputColumns = getInputCols,
-      labelColumn = $(labelColumn),
-      batchSize = $(batchSize),
-      enableMemoryOptimizer = $(enableMemoryOptimizer))
-
-    val testIteratorFunc = NerDLApproach.getIteratorFunc(
-      test,
-      inputColumns = getInputCols,
-      labelColumn = $(labelColumn),
-      batchSize = $(batchSize),
-      enableMemoryOptimizer = $(enableMemoryOptimizer))
+    // TODO DHA: Better way to do this?
+    val trainIteratorFunc = getIteratorFunc(trainSplit)
+    val validIteratorFunc = getIteratorFunc(validSplit)
+    val testIteratorFunc = getIteratorFunc(test)
 
     val (
       labels: mutable.Set[AnnotatorType],
@@ -752,8 +764,9 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
       : () => Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] = {
 
     if (enableMemoryOptimizer) { () =>
+      // Old implementation, kept for backward compatibility but won't be called from NerDLApproach.train
+      // NerDLDataLoader will be used with memory optimizer
       NerTagged.iterateOnDataframe(dataset, inputColumns, labelColumn, batchSize)
-
     } else {
       val inMemory = dataset
         .select(labelColumn, inputColumns.toSeq: _*)
@@ -761,6 +774,21 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
 
       () => NerTagged.iterateOnArray(inMemory, inputColumns, batchSize)
     }
+  }
+
+  def getIteratorFunc(
+      dataset: Dataset[Row],
+      inputColumns: Array[String],
+      labelColumn: String,
+      batchSize: Int,
+      prefetchBatches: Int)
+      : () => Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] = { () =>
+    NerDLDataLoader.iterateOnDataframe(
+      dataset = dataset,
+      inputColumns = inputColumns,
+      labelColumn = labelColumn,
+      batchSize = batchSize,
+      prefetchBatches = prefetchBatches)
   }
 
   def getDataSetParams(dsIt: Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]])

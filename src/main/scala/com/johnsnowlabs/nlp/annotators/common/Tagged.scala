@@ -20,7 +20,7 @@ import com.johnsnowlabs.ml.crf.TextSentenceLabels
 import com.johnsnowlabs.nlp.Annotation
 import com.johnsnowlabs.nlp.AnnotatorType.{NAMED_ENTITY, POS}
 import com.johnsnowlabs.nlp.annotators.common.Annotated.{NerTaggedSentence, PosTaggedSentence}
-import org.apache.spark.sql.{Dataset, Row}
+import org.apache.spark.sql.{Dataset, Encoder, Encoders, Row}
 
 import java.util
 import scala.collection.Map
@@ -118,7 +118,11 @@ trait Tagged[T >: TaggedSentence <: TaggedSentence] extends Annotated[T] {
     row.getAs[Seq[Row]](colNum).map(obj => Annotation(obj))
   }
 
-  protected def getLabelsFromSentences(
+  def getAnnotations(row: Row, col: String): Seq[Annotation] = {
+    row.getAs[Seq[Row]](col).map(obj => Annotation(obj))
+  }
+
+  def getLabelsFromSentences(
       sentences: Seq[WordpieceEmbeddingsSentence],
       labelAnnotations: Seq[Annotation]): Seq[TextSentenceLabels] = {
     val sortedLabels = labelAnnotations.sortBy(a => a.begin).toArray
@@ -198,46 +202,54 @@ object NerTagged extends Tagged[NerTaggedSentence] {
       }
   }
 
-  /** FIXME: ColNums not always in the given order */
   def iterateOnDataframe(
       dataset: Dataset[Row],
       sentenceCols: Seq[String],
       labelColumn: String,
       batchSize: Int): Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] = {
+    import com.johnsnowlabs.nlp.annotators.common.DatasetHelpers._
+    import scala.jdk.CollectionConverters._
 
-    new Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] {
-      import com.johnsnowlabs.nlp.annotators.common.DatasetHelpers._
+    def processPartition(
+        it: Iterator[Row]): Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] =
+      new Iterator[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] {
 
-      // Send batches, don't collect(), only keeping a single batch in memory anytime
-      val it: util.Iterator[Row] = dataset
-        .select(labelColumn, sentenceCols: _*)
-        .randomize // to improve training
-        .toLocalIterator() // Uses as much memory as the largest partition, potentially all data if not careful
+        // create a batch
+        override def next(): Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)] = {
+          var count = 0
+          val thisBatch = new ArrayBuffer[(TextSentenceLabels, WordpieceEmbeddingsSentence)]
 
-      // create a batch
-      override def next(): Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)] = {
-        var count = 0
-        val thisBatch = new ArrayBuffer[(TextSentenceLabels, WordpieceEmbeddingsSentence)]
+          while (it.hasNext && count < batchSize) {
+            count += 1
+            val nextRow = it.next
 
-        while (it.hasNext && count < batchSize) {
-          count += 1
-          val nextRow = it.next
+            val labelAnnotations = getAnnotations(nextRow, labelColumn)
+            val sentenceAnnotations =
+              sentenceCols.flatMap(s => getAnnotations(nextRow, s))
+            val sentences = WordpieceEmbeddingsSentence.unpack(sentenceAnnotations)
+            val labels = getLabelsFromSentences(sentences, labelAnnotations)
+            val thisOne = labels.zip(sentences)
 
-          val labelAnnotations = getAnnotations(nextRow, 0)
-          val sentenceAnnotations =
-            (1 to sentenceCols.length).flatMap(idx => getAnnotations(nextRow, idx))
-          val sentences = WordpieceEmbeddingsSentence.unpack(sentenceAnnotations)
-          val labels = getLabelsFromSentences(sentences, labelAnnotations)
-          val thisOne = labels.zip(sentences)
-
-          thisBatch ++= thisOne
+            thisBatch ++= thisOne
+          }
+          thisBatch.toArray
         }
-        thisBatch.toArray
+
+        override def hasNext: Boolean = it.hasNext
       }
 
-      override def hasNext: Boolean = it.hasNext
-    }
+    implicit def nerDLDataEncoder
+        : Encoder[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]] =
+      Encoders.kryo[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]]
 
+    // Process each partition on worker nodes
+    dataset
+      .select(labelColumn, sentenceCols: _*)
+      .randomize // to improve training TODO: This might have implications on model performance, partitions are not shuffled
+      .mapPartitions(processPartition) // create batches in each partition
+      .as[Array[(TextSentenceLabels, WordpieceEmbeddingsSentence)]]
+      .toLocalIterator() // Uses as much memory as the largest partition, potentially all data if not careful
+      .asScala
   }
 
   /** FIXME: ColNums not always in the given order */

@@ -485,14 +485,20 @@ class NerDLApproach(override val uid: String)
       $(validationSplit) <= 1f | $(validationSplit) >= 0f,
       "The validationSplit must be between 0f and 1f")
 
+    def getIteratorFunc(split: Dataset[Row]) = {
+      NerDLApproach.getIteratorFunc(
+        split,
+        inputColumns = getInputCols,
+        labelColumn = $(labelColumn),
+        batchSize = $(batchSize),
+        enableMemoryOptimizer = $(enableMemoryOptimizer))
+    }
+
     val embeddingsRef =
       HasStorageRef.getStorageRefFromInput(dataset, $(inputCols), AnnotatorType.WORD_EMBEDDINGS)
 
     // Get the data splits
     val (trainSplit: Dataset[Row], validSplit: Dataset[Row], test: Dataset[Row]) = {
-      def cacheIfNeeded(ds: Dataset[Row]): Dataset[Row] =
-        if (getEnableMemoryOptimizer && getMaxEpochs > 1) ds.cache() else ds
-
       val train = dataset.toDF()
       val (validSplit, trainSplit) =
         train.randomSplit(Array($(validationSplit), 1.0f - $(validationSplit))) match {
@@ -503,30 +509,11 @@ class NerDLApproach(override val uid: String)
         if (!isDefined(testDataset)) train.limit(0) // keep the schema only
         else ResourceHelper.readSparkDataFrame($(testDataset))
 
-      (cacheIfNeeded(trainSplit), cacheIfNeeded(validSplit), cacheIfNeeded(test))
+      (trainSplit, validSplit, test)
     }
 
-    val trainIteratorFunc = NerDLApproach.getIteratorFunc(
-      trainSplit,
-      inputColumns = getInputCols,
-      labelColumn = $(labelColumn),
-      batchSize = $(batchSize),
-      enableMemoryOptimizer = $(enableMemoryOptimizer))
-
-    val validIteratorFunc = NerDLApproach.getIteratorFunc(
-      validSplit,
-      inputColumns = getInputCols,
-      labelColumn = $(labelColumn),
-      batchSize = $(batchSize),
-      enableMemoryOptimizer = $(enableMemoryOptimizer))
-
-    val testIteratorFunc = NerDLApproach.getIteratorFunc(
-      test,
-      inputColumns = getInputCols,
-      labelColumn = $(labelColumn),
-      batchSize = $(batchSize),
-      enableMemoryOptimizer = $(enableMemoryOptimizer))
-
+    // TODO DHA: If not suing NerDLGraphChecker this will trigger computations twice.
+    // TODO: How can we calculate dsLen for partitioning without triggering computation here?
     val (
       labels: mutable.Set[AnnotatorType],
       chars: mutable.Set[Char],
@@ -549,12 +536,24 @@ class NerDLApproach(override val uid: String)
             labels: mutable.Set[AnnotatorType],
             chars: mutable.Set[Char],
             embeddingsDim: Int,
-            trainDsLen: Long) = NerDLApproach.getDataSetParams(trainIteratorFunc())
+            trainDsLen: Long) = NerDLApproach.getDataSetParams(getIteratorFunc(trainSplit)())
           val valDsLen: Long =
             math.round(trainDsLen / (1 - $(validationSplit)) * $(validationSplit))
           (labels, chars, embeddingsDim, trainDsLen, valDsLen)
       }
     }
+
+//    val partitions: Int = math.min((dsLen / ($(batchSize) * 8)).toInt, 1) // TODO DHA: WHICH FACTOR HERE?
+//    println("DHA: Repartitioning dataset to " + partitions + " partitions for memory optimization.")
+    def optimizeIfNeeded(ds: Dataset[Row]): Dataset[Row] = {
+      // TODO: DHA: Perhaps create a flag to avoid this step if dataset is partitioned manually
+//      if (getEnableMemoryOptimizer && getMaxEpochs > 1) ds.repartition(partitions).cache() else ds
+      if (getEnableMemoryOptimizer && getMaxEpochs > 1) ds.cache() else ds
+    }
+
+    val trainIteratorFunc = getIteratorFunc(optimizeIfNeeded(trainSplit))
+    val validIteratorFunc = getIteratorFunc(optimizeIfNeeded(validSplit))
+    val testIteratorFunc = getIteratorFunc(optimizeIfNeeded(test))
 
     val settings = DatasetEncoderParams(
       labels.toList,

@@ -26,7 +26,12 @@ import com.johnsnowlabs.nlp.annotators.ner.{ModelMetrics, NerApproach, Verbose}
 import com.johnsnowlabs.nlp.annotators.param.EvaluationDLParams
 import com.johnsnowlabs.nlp.training.NerDLDataLoader
 import com.johnsnowlabs.nlp.util.io.{OutputHelper, ResourceHelper}
-import com.johnsnowlabs.nlp.{AnnotatorApproach, AnnotatorType, ParamsAndFeaturesWritable}
+import com.johnsnowlabs.nlp.{
+  Annotation,
+  AnnotatorApproach,
+  AnnotatorType,
+  ParamsAndFeaturesWritable
+}
 import com.johnsnowlabs.storage.HasStorageRef
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.SystemUtils
@@ -457,7 +462,25 @@ class NerDLApproach(override val uid: String)
     "Number of batches to prefetch while training using memory optimizer. Has no effect if memory optimizer is disabled.")
 
   def getPrefetchBatches: Int = $(this.prefetchBatches)
+
+  /** Sets number of batches to prefetch while training using memory optimizer. Has no effect if
+    * memory optimizer is disabled.
+    * @group setParam
+    */
   def setPrefetchBatches(value: Int): this.type = set(this.prefetchBatches, value)
+
+  val optimizePartitioning = new BooleanParam(
+    this,
+    "optimizePartitioning",
+    "Whether to repartition the dataset before training for optimal performance. Has no effect if memory optimizer is disabled.")
+
+  def getOptimizePartitioning: Boolean = $(this.optimizePartitioning)
+
+  /** Sets whether to repartition the dataset before training for optimal performance. Has no
+    * effect if memory optimizer is disabled.
+    * @group setParam
+    */
+  def setOptimizePartitioning(value: Boolean): this.type = set(this.optimizePartitioning, value)
 
   setDefault(
     minEpochs -> 0,
@@ -472,7 +495,8 @@ class NerDLApproach(override val uid: String)
     enableMemoryOptimizer -> false,
     useBestModel -> false,
     bestModelMetric -> ModelMetrics.loss,
-    prefetchBatches -> 0)
+    prefetchBatches -> 0,
+    optimizePartitioning -> true)
 
   override val verboseLevel: Verbose.Level = Verbose($(verbose))
 
@@ -488,6 +512,74 @@ class NerDLApproach(override val uid: String)
     LoadsContrib.loadContribToTensorflow()
   }
 
+  private def getIteratorFunc(split: Dataset[Row]) = if (!getEnableMemoryOptimizer) {
+    // No memory optimizer
+    NerDLApproach.getIteratorFunc(
+      split,
+      inputColumns = getInputCols,
+      labelColumn = $(labelColumn),
+      batchSize = $(batchSize),
+      enableMemoryOptimizer = $(enableMemoryOptimizer))
+  } else {
+    logger.info(s"Using memory optimizer with $prefetchBatches prefetch batches.")
+    NerDLApproach.getIteratorFunc(
+      split,
+      inputColumns = getInputCols,
+      labelColumn = $(labelColumn),
+      batchSize = $(batchSize),
+      prefetchBatches = getPrefetchBatches)
+  }
+
+  /** Extracts graph parameters and returns an optimized dataframe for training.
+    *
+    * @param dataset
+    *   input dataset
+    * @return
+    *   (labels, chars, embeddingsDim, dsLen, optimizedDataset)
+    */
+  private def prepareData(dataset: Dataset[Row])
+      : (mutable.Set[AnnotatorType], mutable.Set[Char], Int, Long, Dataset[Row]) = {
+    def optimizePartitioning(ds: Dataset[Row], dsLen: Long): Dataset[Row] = {
+      if (getEnableMemoryOptimizer && getOptimizePartitioning) {
+        // Repartition cachedDataset according to heuristic:
+        // Assume one row contains about 1 MB of data (BertEmbeddings), and spark recommends 100MB to 1GB partitions.
+        // We'll go for the middle ground of 500MB means that one partition should hold 500 rows
+        val numPartitions = math.ceil(dsLen / 500.0).toInt
+        logger.info(
+          s"Repartitioning input cachedDataset to $numPartitions partitions for NerDL training.")
+        ds.repartition(numPartitions)
+      } else ds
+    }
+
+    val cachedDataset: Dataset[Row] = dataset.cache().toDF()
+    NerDLApproach.getDataSetParamsFromMetadata(cachedDataset, $(labelColumn)) match {
+      // metadata contains the length of the entire cachedDataset, so we can avoid a count() action
+      case Some(
+            (
+              labels: mutable.Set[AnnotatorType],
+              chars: mutable.Set[Char],
+              embeddingsDim: Int,
+              dsLen: Long)) =>
+        // Only repartition if using memory optimizer
+        val repartitionedDataset = optimizePartitioning(cachedDataset, dsLen)
+        (labels, chars, embeddingsDim, dsLen, repartitionedDataset)
+      case None => // Legacy way of getting cachedDataset params
+        logger.info("Dataset metadata does not contain graph parameters, extracting from data.")
+        val docColumn =
+          Annotation.getColumnByType(dataset, getInputCols, AnnotatorType.DOCUMENT).name
+        val dsLen = cachedDataset.selectExpr(s"explode($docColumn)").count()
+        // Repartition now, so we don't OOM when extracting params
+        val repartitionedDataset = optimizePartitioning(cachedDataset, dsLen)
+        val (
+          labels: mutable.Set[AnnotatorType],
+          chars: mutable.Set[Char],
+          embeddingsDim: Int,
+          _) =
+          NerDLApproach.getDataSetParams(getIteratorFunc(repartitionedDataset)())
+        (labels, chars, embeddingsDim, dsLen, repartitionedDataset)
+    }
+  }
+
   override def train(
       dataset: Dataset[_],
       recursivePipeline: Option[PipelineModel]): NerDLModel = {
@@ -495,78 +587,36 @@ class NerDLApproach(override val uid: String)
       $(validationSplit) <= 1f | $(validationSplit) >= 0f,
       "The validationSplit must be between 0f and 1f")
 
-    def getIteratorFunc(split: Dataset[Row]) = if (!getEnableMemoryOptimizer) {
-      // No memory optimizer
-      NerDLApproach.getIteratorFunc(
-        split,
-        inputColumns = getInputCols,
-        labelColumn = $(labelColumn),
-        batchSize = $(batchSize),
-        enableMemoryOptimizer = $(enableMemoryOptimizer))
-    } else {
-      logger.info(s"Using memory optimizer with $prefetchBatches prefetch batches.")
-      NerDLApproach.getIteratorFunc(
-        split,
-        inputColumns = getInputCols,
-        labelColumn = $(labelColumn),
-        batchSize = $(batchSize),
-        prefetchBatches = getPrefetchBatches)
-    }
-
     val embeddingsRef =
       HasStorageRef.getStorageRefFromInput(dataset, $(inputCols), AnnotatorType.WORD_EMBEDDINGS)
-
-    // Get the data splits
-    val (trainSplit: Dataset[Row], validSplit: Dataset[Row], test: Dataset[Row]) = {
-      def cacheIfNeeded(ds: Dataset[Row]): Dataset[Row] =
-        if (getEnableMemoryOptimizer && getMaxEpochs > 1) ds.cache() else ds
-
-      val train = dataset.toDF()
-      val (validSplit, trainSplit) =
-        train.randomSplit(Array($(validationSplit), 1.0f - $(validationSplit))) match {
-          case Array(validSplit, trainSplit) => (validSplit, trainSplit)
-        }
-
-      val test =
-        if (!isDefined(testDataset)) train.limit(0) // keep the schema only
-        else ResourceHelper.readSparkDataFrame($(testDataset))
-
-      (cacheIfNeeded(trainSplit), cacheIfNeeded(validSplit), cacheIfNeeded(test))
-    }
-
-    // TODO DHA: Better way to do this?
-    val trainIteratorFunc = getIteratorFunc(trainSplit)
-    val validIteratorFunc = getIteratorFunc(validSplit)
-    val testIteratorFunc = getIteratorFunc(test)
 
     val (
       labels: mutable.Set[AnnotatorType],
       chars: mutable.Set[Char],
       embeddingsDim: Int,
-      trainDsLen: Long,
-      valDsLen: Long) = {
-      NerDLApproach.getDataSetParamsFromMetadata(trainSplit, $(labelColumn)) match {
-        // metadata contains the length of the entire dataset
-        case Some(
-              (
-                labels: mutable.Set[AnnotatorType],
-                chars: mutable.Set[Char],
-                embeddingsDim: Int,
-                dsLen: Long)) =>
-          val trainDsLen = math.round(dsLen * (1.0f - $(validationSplit)))
-          val valDsLen = dsLen - trainDsLen
-          (labels, chars, embeddingsDim, trainDsLen.toLong, valDsLen)
-        case None => // Legacy way of getting dataset params
-          val (
-            labels: mutable.Set[AnnotatorType],
-            chars: mutable.Set[Char],
-            embeddingsDim: Int,
-            trainDsLen: Long) = NerDLApproach.getDataSetParams(trainIteratorFunc())
-          val valDsLen: Long =
-            math.round(trainDsLen / (1 - $(validationSplit)) * $(validationSplit))
-          (labels, chars, embeddingsDim, trainDsLen, valDsLen)
-      }
+      dsLen: Long,
+      optimizedDataset: Dataset[Row]) = prepareData(dataset.toDF())
+    val trainDsLen = math.round(dsLen * (1.0f - $(validationSplit)))
+    val valDsLen = dsLen - trainDsLen
+
+    // Get the data splits
+    val (trainSplit: Dataset[Row], validSplit: Dataset[Row], test: Dataset[Row]) = {
+      val (validSplit, trainSplit) =
+        optimizedDataset.randomSplit(Array($(validationSplit), 1.0f - $(validationSplit))) match {
+          case Array(validSplit, trainSplit) => (validSplit, trainSplit)
+        }
+
+      val test =
+        if (!isDefined(testDataset)) optimizedDataset.limit(0) // keep the schema only
+        else ResourceHelper.readSparkDataFrame($(testDataset))
+
+      (trainSplit, validSplit, test)
     }
+
+    // Get Iterators
+    val trainIteratorFunc = getIteratorFunc(trainSplit)
+    val validIteratorFunc = getIteratorFunc(validSplit)
+    val testIteratorFunc = getIteratorFunc(test)
 
     val settings = DatasetEncoderParams(
       labels.toList,
@@ -641,9 +691,7 @@ class NerDLApproach(override val uid: String)
     if (get(configProtoBytes).isDefined)
       model.setConfigProtoBytes($(configProtoBytes))
 
-    trainSplit.unpersist()
-    validSplit.unpersist()
-    test.unpersist()
+    optimizedDataset.unpersist()
     model
   }
 }
@@ -860,7 +908,7 @@ object NerDLApproach extends DefaultParamsReadable[NerDLApproach] with WithGraph
           val chars = metadata.getStringArray(NerDLGraphCheckerModel.charsKey).map(_.head)
           val embeddingsDim = metadata.getLong(NerDLGraphCheckerModel.embeddingsDimKey).toInt
           val dsLen = metadata.getLong(NerDLGraphCheckerModel.dsLenKey)
-          logger.info(s"NerDLApproach: Found graph params in label column metadata:" +
+          logger.info(s"Found graph params in label column metadata:" +
             s" labels=${labels.length}, chars=${chars.length}, embeddingsDim=$embeddingsDim, dsLen=$dsLen")
 
           Some(

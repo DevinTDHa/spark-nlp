@@ -19,6 +19,7 @@ package com.johnsnowlabs.nlp.annotators.parser.dep
 import com.johnsnowlabs.nlp._
 import com.johnsnowlabs.nlp.annotator.PerceptronModel
 import com.johnsnowlabs.nlp.annotators.SparkSessionTest
+import com.johnsnowlabs.nlp.annotators.parser.dep.GreedyTransition.DependencyMaker
 import com.johnsnowlabs.tags.SlowTest
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.util.MLWriter
@@ -148,5 +149,28 @@ class DependencyParserModelTestSpec extends AnyFlatSpec with SparkSessionTest {
           r.getString(3),
           r.getMap[String, String](4))
       }
+  }
+
+  it should "save and load correctly" taggedAs SlowTest in {
+    val model = pipelineTreeBank.fit(emptyDataSet).stages.last.asInstanceOf[DependencyParserModel]
+    val modelPath = "models_serialization/dependency_parser_model_2.13_json"
+    saveModel(model.write, modelPath)
+    val loadedModel = DependencyParserModel.load(modelPath)
+    assert(loadedModel.uid == model.uid)
+
+    val depMaker: DependencyMaker = model.getPerceptron
+    val depMakerLoaded = loadedModel.getPerceptron
+
+    assert(depMaker.SHIFT == depMakerLoaded.SHIFT)
+    assert(depMaker.RIGHT == depMakerLoaded.RIGHT)
+    assert(depMaker.LEFT == depMakerLoaded.LEFT)
+    assert(depMaker.INVALID == depMakerLoaded.INVALID)
+  }
+
+  it should "load an old model correctly" taggedAs SlowTest in {
+    val modelPath =
+      "/home/ducha/Workspace/scala/spark-nlp-feature/models_serialization/dependency_parser_model_2.12_json"
+
+    val loadedModel = DependencyParserModel.load(modelPath)
   }
 }
